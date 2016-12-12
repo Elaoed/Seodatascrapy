@@ -85,10 +85,9 @@ def if_url(url):
 @app.route('/getKeywordRank', methods=['POST'])
 @try_except
 def index():
-
-    url = request.args.get('url')
-    keyword = request.args.get('keyword')
-    search_engine = request.args.get('search_engine')
+    url = request.form['url']
+    keyword = request.form['keyword']
+    search_engine = request.form['search_engine']
 
     if url and keyword and search_engine:
 
@@ -114,8 +113,7 @@ def index():
 @app.route('/getDeadLink', methods=['POST'])
 @try_except
 def index2():
-
-    domain = request.args.get('url')
+    domain = request.form['url']
     if not domain:
         raise MyException("获取友情链接--参数不正确", 10002)
     url = dealDomain(domain)
@@ -130,7 +128,7 @@ def index2():
 @try_except
 def index3():
 
-    domain = request.args.get('url')
+    domain = request.form['url']
     if not domain:
         raise MyException("获取网页信息--参数不正确", 10002)
     url = dealDomain(domain)

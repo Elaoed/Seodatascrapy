@@ -31,10 +31,6 @@ QUEUE_NAME = 'request_queue'
 
 r = redis.Redis()
 
-# headers = {
-#     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36',
-#     'Accept-Encoding': 'gzip, deflate'
-# }
 headers = {
     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -562,23 +558,23 @@ def try_except(orig_func):
             _LOGGER.info('=========================')
         except requests.exceptions.MissingSchema as e:
             _LOGGER.error(e)
-            retobj = json.dumps({"status": {"msg": 'requests.exceptions.MissingSchema:{}'.format(
-                e), "code": 10004, "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []})
+            retobj = json.dumps({"status": {"msg": 'URL错误', "code": 10004, "time": time.strftime(
+                '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []})
         except requests.ReadTimeout as e:
             _LOGGER.error(e)
-            retobj = json.dumps({"status": {"msg": 'requests.ReadTimeout:{}'.format(
-                e), "code": 10005, "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []})
+            retobj = json.dumps({"status": {"msg": '连接超时', "code": 10005, "time": time.strftime(
+                '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []})
         except requests.exceptions.ConnectionError as e:
             _LOGGER.error(e)
-            retobj = json.dumps({"status": {"msg": 'request.exception.ConnectionError:{}'.format(
-                e), "code": 10005, "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []})
+            retobj = json.dumps({"status": {"msg": '链接错误', "code": 10005, "time": time.strftime(
+                '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []})
         except MyException as e:
             _LOGGER.error(e.msg)
             retobj = {"status": {"msg": str(e.msg), "code": e.code, "time": time.strftime(
                 '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []}
         except Exception as e:
-            _LOGGER.error(e)
-            retobj = {"status": {"msg": '%s' % e, "code": 10001, "time": time.strftime(
+            _LOGGER.critical(e)
+            retobj = {"status": {"msg": '未知错误', "code": 10001, "time": time.strftime(
                 '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []}
 
         finally:
