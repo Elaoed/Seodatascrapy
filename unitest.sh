@@ -12,7 +12,7 @@ function test_link(){
 	echo "Testing getDeadLink..........."
 	for url in ${url_list[@]}
 		do
-		curl -X POST -d "domain=${url}" 192.168.199.21:5003/getDeadLink
+		curl -X POST -d "domain=${url}" localhost:5003/getDeadLink
 		echo  
 		echo "================================================="
 	done
@@ -22,7 +22,7 @@ function test_web(){
 	echo "Testing getWebInfo..........."
 	for url in ${url_list[@]}
 	do
-		curl -X POST -d "domain=${url}" 192.168.199.21:5003/getWebInfo
+		curl -X POST -d "domain=${url}" localhost:5003/getWebInfo
 		echo
 		echo "================================================="
 	done
@@ -36,7 +36,7 @@ function test_key_word(){
 	do
 		engine=${RANENGINE[$[$RANDOM % ${#RANENGINE[@]}]]}
 		keyword=${KEYWORDS[$[$RANDOM % ${#KEYWORDS[@]}]]}
-		curl -X POST -d "domain=${url}&search_engine=${engine}&keyword=${keyword}" 192.168.199.21:5003/getKeywordRank
+		curl -X POST -d "domain=${url}&search_engine=${engine}&keyword=${keyword}" localhost:5003/getKeywordRank
 		echo
 		echo "==================================================="
 	done		

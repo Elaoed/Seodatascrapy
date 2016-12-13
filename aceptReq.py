@@ -8,13 +8,17 @@ import time
 import json
 from kits.dealDomain import dealDomain
 import requests
+from kits.MyException import MyException
+from kits.config import ROOT_PATH
+from os import path
+with open(path.join(ROOT_PATH, 'config/db.conf'), 'r') as f:
+    redis_conf = json.load(f)
 
-
-r = redis.Redis(port=6381, password='shdj$%26W3!@e')
+r = redis.Redis(
+    port=redis_conf['redis']['port'], password=redis_conf['redis']['password'])
 
 app = Flask(__name__)
 LOGGER = get_logger('acceptRequest')
-from kits.MyException import MyException
 QUEUE_NAME = "request_queue"
 
 

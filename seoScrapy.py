@@ -15,6 +15,8 @@ except ImportError:
     import xml.etree.ElementTree as ET
 import time
 import os
+from os import path
+from kits.config import ROOT_PATH
 import gzip
 from flask import Flask, request
 import json
@@ -29,7 +31,11 @@ import Queue
 import time
 QUEUE_NAME = 'request_queue'
 
-r = redis.Redis()
+with open(path.join(ROOT_PATH, 'config/db.conf'), 'r') as f:
+    redis_conf = json.load(f)
+
+r = redis.Redis(
+    port=redis_conf['redis']['port'], password=redis_conf['redis']['password'])
 
 headers = {
     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36',
@@ -84,7 +90,7 @@ class SEOscrapy(object):
         self.include = None
 
     def getResponse(self, url):
-        # print "In get Response"
+
         _LOGGER.info('In getResponse')
 
         self.url = url
@@ -125,10 +131,8 @@ class SEOscrapy(object):
         else:
             _LOGGER.warning("%s's status_code is %d" % (url, res.status_code))
             raise MyException('%s 网页无法访问' % url, 10004)
-        # print "OUt getresponse"
 
     def getBaiduWeight(self, url):
-        # print "In getbaidiweight"
         _LOGGER.info('In getBaiduWeight')
 
         appkey = '618e7a46808573be2401596582de62fb'
@@ -155,7 +159,6 @@ class SEOscrapy(object):
                 "From": "0",
                 "Weight": "0"
             }
-        # print "out getbaidiweight"
 
     def getWebInfo(self, domain):
         _LOGGER.info('In getWebInfo')
@@ -230,7 +233,6 @@ class SEOscrapy(object):
         return contents
 
     def getAlexa(self, url):
-        # print "In getAlexa"
         _LOGGER.info("In getAlexa")
         # Element ALEXA is root  openfile has to getroot fromstring dont
         try:
@@ -239,16 +241,12 @@ class SEOscrapy(object):
         except requests.ReadTimeout as e:
             self.alexa = None
             return
-
-        # print "Alexa geted"
         tree = ET.fromstring(html)
-
         try:
             alexa = tree[0][1].attrib['RANK']
         except IndexError as e:
             alexa = 0
         self.alexa = alexa
-        # print "OUT getAlexa"
 
     def getDeadLink(self, url):
         _LOGGER.info("In getDeadLink")
@@ -304,7 +302,6 @@ class SEOscrapy(object):
         return retobj
 
     def getInclude(self, url):
-        print "In getInclude"
         _LOGGER.info('In getInclude')
 
         if 'http' in url or 'https' in url:
@@ -334,7 +331,6 @@ class SEOscrapy(object):
         sogou = 0 if not res3 else res3[0]
         include = {'baidu': baidu, '360': _360, 'sogou': sogou, 'google': 0}
         self.include = include
-        print "out getInclude"
 
     def getBySearchEngine(self, domain, base_url, search_engine):
 
@@ -469,7 +465,6 @@ class SEOscrapy(object):
         return retobj
 
     def getAllweb(self):
-        print "in getallweb"
         _LOGGER.info('In getAllweb')
 
         soup = BeautifulSoup(self.content, 'lxml')
@@ -530,7 +525,6 @@ class SEOscrapy(object):
                 (pre_size - post_size)*100/pre_size) + '%'
         except ZeroDivisionError as zerror:
             self.grate = '0%'
-        print "out getallweb"
 
     def getsize(self, dirpath):
         size = 0
@@ -614,5 +608,6 @@ if __name__ == "__main__":
         if not req:
             time.sleep(1)
             continue
+        print "Deal with ", req
         t = threading.Thread(target=run_forever, args=(req, ))
         t.start()
