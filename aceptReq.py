@@ -10,7 +10,7 @@ from kits.dealDomain import dealDomain
 import requests
 
 
-r = redis.Redis()
+r = redis.Redis(port=6381, password='shdj$%26W3!@e')
 
 app = Flask(__name__)
 LOGGER = get_logger('acceptRequest')
