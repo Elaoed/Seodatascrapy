@@ -21,13 +21,13 @@ def dealDomain(url):
             res = conn.getresponse()
             if res.status == 301 or res.status == 302:
                 url = {
-                    'url': res.msg['Location'], 'code': 0, 'msg': 'url moved to %s' % res.msg['Location']}
+                    'url': res.msg['Location'], 'code': 0, 'msg': '网站转移到了 %s' % res.msg['Location']}
             elif res.status == 200:
                 url = {'url': 'http://%s' %
                        url, 'code': 0, 'msg': '返回值是200'}
             else:
-                url = {'url': url, 'msg': "url%s return code:%d" %
-                       (url, res.status), 'code': 10008}
+                url = {'url': url, 'msg': "url%s 无法解析 " %
+                       (url, res.status), 'code': 10005}
         except socket.gaierror as e:
             url = {'url': url, 'code': 10005, 'msg': 'cant parse %s' % url}
         except requests.ReadTimeout as e:

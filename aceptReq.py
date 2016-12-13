@@ -85,7 +85,7 @@ def if_url(url):
 @app.route('/getKeywordRank', methods=['POST'])
 @try_except
 def index():
-    url = request.form['url']
+    url = request.form['domain']
     keyword = request.form['keyword']
     search_engine = request.form['search_engine']
 
@@ -113,30 +113,27 @@ def index():
 @app.route('/getDeadLink', methods=['POST'])
 @try_except
 def index2():
-    domain = request.form['url']
+    domain = request.form['domain']
     if not domain:
         raise MyException("获取友情链接--参数不正确", 10002)
-    url = dealDomain(domain)
-    if url['code'] == 0:
-        redis_key = 'getDeadLink-%s-%s' % (domain, url['url'])
-        return query_redis(redis_key)
-    else:
-        raise MyException(url['msg'], url['code'])
+    if not if_url(domain):
+        raise MyException('url格式不正确', 10003)
+    redis_key = 'getDeadLink-%s' % domain
+    return query_redis(redis_key)
 
 
 @app.route('/getWebInfo', methods=['POST'])
 @try_except
 def index3():
 
-    domain = request.form['url']
+    domain = request.form['domain']
     if not domain:
         raise MyException("获取网页信息--参数不正确", 10002)
-    url = dealDomain(domain)
-    if url['code'] == 0:
-        redis_key = 'getWebInfo-%s-%s' % (url['url'], domain)
-        return query_redis(redis_key)
-    else:
-        raise MyException(url['msg'], url['code'])
+    if not if_url(domain):
+        raise MyException('url格式不正确', 10003)
+
+    redis_key = 'getWebInfo-%s' % domain
+    return query_redis(redis_key)
 
 
 if __name__ == "__main__":

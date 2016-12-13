@@ -84,7 +84,7 @@ class SEOscrapy(object):
         self.include = None
 
     def getResponse(self, url):
-        print "In get Response"
+        # print "In get Response"
         _LOGGER.info('In getResponse')
 
         self.url = url
@@ -125,10 +125,10 @@ class SEOscrapy(object):
         else:
             _LOGGER.warning("%s's status_code is %d" % (url, res.status_code))
             raise MyException('%s 网页无法访问' % url, 10004)
-        print "OUt getresponse"
+        # print "OUt getresponse"
 
     def getBaiduWeight(self, url):
-        print "In getbaidiweight"
+        # print "In getbaidiweight"
         _LOGGER.info('In getBaiduWeight')
 
         appkey = '618e7a46808573be2401596582de62fb'
@@ -155,10 +155,15 @@ class SEOscrapy(object):
                 "From": "0",
                 "Weight": "0"
             }
-        print "out getbaidiweight"
+        # print "out getbaidiweight"
 
-    def getWebInfo(self, url, domain):
+    def getWebInfo(self, domain):
         _LOGGER.info('In getWebInfo')
+
+        url = dealDomain(domain)
+        if url['code'] != 0:
+            raise MyException(url['msg'], url['code'])
+        url = url['url']
 
         self.getResponse(url)
         t1 = threading.Thread(target=self.getBaiduWeight, args=(domain, ))
@@ -191,7 +196,7 @@ class SEOscrapy(object):
         webInfo['alexa'] = self.alexa if self.alexa else 0
 
         if not self.include:
-            raise MyException('获取权重出错', 10011)
+            raise MyException('获取收录出错', 10011)
         else:
             webInfo['include'] = self.include
 
@@ -225,7 +230,7 @@ class SEOscrapy(object):
         return contents
 
     def getAlexa(self, url):
-        print "In getAlexa"
+        # print "In getAlexa"
         _LOGGER.info("In getAlexa")
         # Element ALEXA is root  openfile has to getroot fromstring dont
         try:
@@ -235,7 +240,7 @@ class SEOscrapy(object):
             self.alexa = None
             return
 
-        print "Alexa geted"
+        # print "Alexa geted"
         tree = ET.fromstring(html)
 
         try:
@@ -243,10 +248,14 @@ class SEOscrapy(object):
         except IndexError as e:
             alexa = 0
         self.alexa = alexa
-        print "OUT getAlexa"
+        # print "OUT getAlexa"
 
     def getDeadLink(self, url):
         _LOGGER.info("In getDeadLink")
+        url = dealDomain(url)
+        if url['code'] != 0:
+            raise MyException(url['msg'], url['code'])
+        url = url['url']
 
         links = self.getfriendLinks(url)
         qlinks = Queue.Queue()
@@ -282,7 +291,6 @@ class SEOscrapy(object):
                 _LOGGER.info('In testLink--%s:%s' % (link, 'Invilid url'))
                 link_status[link] = 1
 
-        print "before testLink"
         for i in range(60):
             threads.append(
                 threading.Thread(target=testLink))
@@ -290,7 +298,6 @@ class SEOscrapy(object):
 
         for i in threads:
             i.join()
-        print "after testLink"
 
         retobj = {"status": {"msg": "死链接获取成功", "code": 1000, "time": time.strftime(
             '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": link_status, "list": []}
@@ -592,9 +599,9 @@ def run_forever(req):
         result = FUNC[param_string[0]](
             param_string[1], param_string[2], param_string[3])
     elif param_string[0] in 'getWebInfo':
-        result = FUNC[param_string[0]](param_string[1], param_string[2])
+        result = FUNC[param_string[0]](param_string[1])
     else:
-        result = FUNC[param_string[0]](param_string[2])
+        result = FUNC[param_string[0]](param_string[1])
 
     return result
 
@@ -605,9 +612,7 @@ if __name__ == "__main__":
     while True:
         req = r.rpop(QUEUE_NAME)
         if not req:
-
             time.sleep(1)
             continue
-        print "Deal with %s" % req
         t = threading.Thread(target=run_forever, args=(req, ))
         t.start()

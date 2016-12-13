@@ -1,0 +1,179 @@
+2016-12-12 21:09:22,955 - seoScrapy - CRITICAL - 583 - list index out of range
+2016-12-12 21:09:22,956 - seoScrapy - CRITICAL - 583 - list index out of range
+2016-12-12 21:09:22,961 - seoScrapy - CRITICAL - 583 - list index out of range
+2016-12-12 21:09:22,962 - seoScrapy - CRITICAL - 583 - list index out of range
+2016-12-12 21:09:22,963 - seoScrapy - CRITICAL - 583 - list index out of range
+2016-12-12 21:09:22,963 - seoScrapy - CRITICAL - 583 - list index out of range
+2016-12-12 21:09:23,966 - seoScrapy - CRITICAL - 583 - list index out of range
+2016-12-12 21:09:23,967 - seoScrapy - CRITICAL - 583 - list index out of range
+2016-12-12 21:11:00,714 - seoScrapy - INFO - 253 - In getDeadLink
+2016-12-12 21:11:00,715 - seoScrapy - INFO - 253 - In getDeadLink
+2016-12-12 21:11:00,716 - seoScrapy - INFO - 253 - In getDeadLink
+2016-12-12 21:11:00,717 - seoScrapy - INFO - 253 - In getDeadLink
+2016-12-12 21:11:00,717 - seoScrapy - INFO - 253 - In getDeadLink
+2016-12-12 21:11:00,718 - seoScrapy - INFO - 253 - In getDeadLink
+2016-12-12 21:11:00,718 - seoScrapy - INFO - 253 - In getDeadLink
+2016-12-12 21:11:00,719 - seoScrapy - INFO - 253 - In getDeadLink
+2016-12-12 21:11:00,743 - seoScrapy - INFO - 208 - In getFriendLinks url:{'url': 'https://www.newdun.com/', 'msg': '\xe7\xbd\x91\xe7\xab\x99\xe8\xbd\xac\xe7\xa7\xbb\xe5\x88\xb0\xe4\xba\x86 https://www.newdun.com/', 'code': 0}
+2016-12-12 21:11:03,843 - seoScrapy - INFO - 208 - In getFriendLinks url:{'url': 'http://www.ipc.me/', 'msg': '\xe7\xbd\x91\xe7\xab\x99\xe8\xbd\xac\xe7\xa7\xbb\xe5\x88\xb0\xe4\xba\x86 http://www.ipc.me/', 'code': 0}
+2016-12-12 21:11:03,876 - seoScrapy - INFO - 208 - In getFriendLinks url:{'url': 'http://www.163.com/', 'msg': '\xe7\xbd\x91\xe7\xab\x99\xe8\xbd\xac\xe7\xa7\xbb\xe5\x88\xb0\xe4\xba\x86 http://www.163.com/', 'code': 0}
+2016-12-12 21:11:03,887 - seoScrapy - INFO - 208 - In getFriendLinks url:{'url': 'http://www.cnblogs.com/', 'msg': '\xe7\xbd\x91\xe7\xab\x99\xe8\xbd\xac\xe7\xa7\xbb\xe5\x88\xb0\xe4\xba\x86 http://www.cnblogs.com/', 'code': 0}
+2016-12-12 21:11:03,932 - seoScrapy - INFO - 208 - In getFriendLinks url:{'url': 'https://pubu.im/', 'msg': '\xe7\xbd\x91\xe7\xab\x99\xe8\xbd\xac\xe7\xa7\xbb\xe5\x88\xb0\xe4\xba\x86 https://pubu.im/', 'code': 0}
+2016-12-12 21:11:04,004 - seoScrapy - INFO - 208 - In getFriendLinks url:{'url': 'https://yiqixie.com/', 'msg': '\xe7\xbd\x91\xe7\xab\x99\xe8\xbd\xac\xe7\xa7\xbb\xe5\x88\xb0\xe4\xba\x86 https://yiqixie.com/', 'code': 0}
+2016-12-12 21:11:04,340 - seoScrapy - INFO - 208 - In getFriendLinks url:{'url': 'http://www.sina.com/', 'msg': '\xe7\xbd\x91\xe7\xab\x99\xe8\xbd\xac\xe7\xa7\xbb\xe5\x88\xb0\xe4\xba\x86 http://www.sina.com/', 'code': 0}
+2016-12-12 21:13:08,295 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:13:08,297 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:13:08,298 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:13:08,300 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:13:08,301 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:13:08,301 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:13:08,302 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:13:08,302 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:13:08,320 - seoScrapy - INFO - 209 - In getFriendLinks url:https://www.newdun.com/
+2016-12-12 21:13:09,334 - seoScrapy - INFO - 209 - In getFriendLinks url:http://www.cnblogs.com/
+2016-12-12 21:13:09,341 - seoScrapy - INFO - 209 - In getFriendLinks url:http://www.ipc.me/
+2016-12-12 21:13:09,344 - seoScrapy - INFO - 209 - In getFriendLinks url:http://www.163.com/
+2016-12-12 21:13:09,348 - seoScrapy - INFO - 209 - In getFriendLinks url:https://pubu.im/
+2016-12-12 21:13:09,435 - seoScrapy - INFO - 209 - In getFriendLinks url:https://yiqixie.com/
+2016-12-12 21:13:10,847 - seoScrapy - INFO - 209 - In getFriendLinks url:http://www.sina.com/
+2016-12-12 21:13:14,646 - seoScrapy - INFO - 279 - In testLink--https://jianshu.com:url unreachable
+2016-12-12 21:13:56,304 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:13:56,307 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:13:56,329 - seoScrapy - INFO - 209 - In getFriendLinks url:https://www.newdun.com/
+2016-12-12 21:13:57,309 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:13:57,310 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:13:57,311 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:13:57,311 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:13:57,312 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:13:57,312 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:14:17,381 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:14:17,382 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:14:17,382 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:14:17,383 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:14:17,383 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:14:17,384 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:14:17,384 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:14:17,385 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 21:14:26,315 - seoScrapy - ERROR - 581 - cant parse aaa.com
+2016-12-12 21:14:26,380 - seoScrapy - INFO - 209 - In getFriendLinks url:http://www.cnblogs.com/
+2016-12-12 21:14:26,908 - seoScrapy - INFO - 209 - In getFriendLinks url:http://www.163.com/
+2016-12-12 21:14:26,909 - seoScrapy - INFO - 209 - In getFriendLinks url:http://www.ipc.me/
+2016-12-12 21:14:26,954 - seoScrapy - INFO - 209 - In getFriendLinks url:https://pubu.im/
+2016-12-12 21:14:26,965 - seoScrapy - INFO - 209 - In getFriendLinks url:https://www.newdun.com/
+2016-12-12 21:14:27,024 - seoScrapy - INFO - 209 - In getFriendLinks url:https://yiqixie.com/
+2016-12-12 21:14:27,396 - seoScrapy - INFO - 209 - In getFriendLinks url:http://www.sina.com/
+2016-12-12 21:14:27,953 - seoScrapy - ERROR - 581 - cant parse aaa.com
+2016-12-12 21:14:27,979 - seoScrapy - INFO - 209 - In getFriendLinks url:http://www.cnblogs.com/
+2016-12-12 21:14:27,982 - seoScrapy - INFO - 209 - In getFriendLinks url:http://www.ipc.me/
+2016-12-12 21:14:27,985 - seoScrapy - INFO - 209 - In getFriendLinks url:http://www.163.com/
+2016-12-12 21:14:27,990 - seoScrapy - INFO - 209 - In getFriendLinks url:https://pubu.im/
+2016-12-12 21:14:28,054 - seoScrapy - INFO - 209 - In getFriendLinks url:https://yiqixie.com/
+2016-12-12 21:14:28,385 - seoScrapy - INFO - 209 - In getFriendLinks url:http://www.sina.com/
+2016-12-12 21:14:29,703 - seoScrapy - INFO - 279 - In testLink--https://jianshu.com:url unreachable
+2016-12-12 21:14:29,727 - seoScrapy - INFO - 279 - In testLink--https://jianshu.com:url unreachable
+2016-12-12 21:14:31,459 - seoScrapy - INFO - 567 - =========================
+2016-12-12 21:14:33,055 - seoScrapy - INFO - 567 - =========================
+2016-12-12 21:14:33,215 - seoScrapy - INFO - 567 - =========================
+2016-12-12 21:14:33,422 - seoScrapy - INFO - 567 - =========================
+2016-12-12 21:14:33,555 - seoScrapy - INFO - 567 - =========================
+2016-12-12 21:14:33,556 - seoScrapy - INFO - 567 - =========================
+2016-12-12 21:14:33,802 - seoScrapy - INFO - 567 - =========================
+2016-12-12 21:14:33,810 - seoScrapy - INFO - 567 - =========================
+2016-12-12 21:14:34,609 - seoScrapy - INFO - 567 - =========================
+2016-12-12 21:14:35,368 - seoScrapy - INFO - 567 - =========================
+2016-12-12 21:14:35,804 - seoScrapy - INFO - 567 - =========================
+2016-12-12 21:14:36,677 - seoScrapy - INFO - 567 - =========================
+2016-12-12 21:14:40,082 - seoScrapy - INFO - 285 - In testLink--http://tabtale.com/apps/coco-play:unreachable too
+2016-12-12 21:14:40,082 - seoScrapy - INFO - 567 - =========================
+2016-12-12 21:14:41,320 - seoScrapy - INFO - 567 - =========================
+2016-12-12 22:08:20,631 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 22:08:23,843 - seoScrapy - INFO - 209 - In getFriendLinks url:https://www.newdun.com/
+2016-12-12 22:08:25,643 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 22:08:29,196 - seoScrapy - INFO - 567 - =========================
+2016-12-12 22:08:30,665 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 22:08:30,985 - seoScrapy - INFO - 209 - In getFriendLinks url:http://www.cnblogs.com/
+2016-12-12 22:08:35,683 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 22:08:36,835 - seoScrapy - ERROR - 581 - timed out
+2016-12-12 22:08:40,695 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 22:08:45,712 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 22:08:46,151 - seoScrapy - INFO - 209 - In getFriendLinks url:http://www.ipc.me/
+2016-12-12 22:08:47,427 - seoScrapy - INFO - 209 - In getFriendLinks url:http://www.sina.com/
+2016-12-12 22:08:47,635 - seoScrapy - INFO - 209 - In getFriendLinks url:http://www.163.com/
+2016-12-12 22:08:50,727 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 22:08:53,765 - seoScrapy - INFO - 567 - =========================
+2016-12-12 22:08:53,785 - seoScrapy - INFO - 567 - =========================
+2016-12-12 22:08:54,844 - seoScrapy - INFO - 209 - In getFriendLinks url:https://pubu.im/
+2016-12-12 22:08:55,469 - seoScrapy - INFO - 567 - =========================
+2016-12-12 22:09:08,720 - seoScrapy - INFO - 567 - =========================
+2016-12-12 22:09:10,841 - seoScrapy - INFO - 279 - In testLink--https://jianshu.com:url unreachable
+2016-12-12 22:09:16,025 - seoScrapy - INFO - 279 - In testLink--http://10010.com:url unreachable
+2016-12-12 22:09:16,642 - seoScrapy - INFO - 567 - =========================
+2016-12-12 22:10:17,763 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 22:10:17,764 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 22:10:17,765 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 22:10:17,766 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 22:10:17,767 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 22:10:17,768 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 22:10:17,768 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 22:10:17,769 - seoScrapy - INFO - 254 - In getDeadLink
+2016-12-12 22:10:17,791 - seoScrapy - INFO - 209 - In getFriendLinks url:https://www.newdun.com/
+2016-12-12 22:10:17,813 - seoScrapy - INFO - 209 - In getFriendLinks url:http://www.ipc.me/
+2016-12-12 22:10:17,815 - seoScrapy - INFO - 209 - In getFriendLinks url:http://www.163.com/
+2016-12-12 22:10:17,817 - seoScrapy - INFO - 209 - In getFriendLinks url:http://www.cnblogs.com/
+2016-12-12 22:10:17,972 - seoScrapy - INFO - 209 - In getFriendLinks url:http://www.sina.com/
+2016-12-12 22:10:21,225 - seoScrapy - INFO - 209 - In getFriendLinks url:https://yiqixie.com/
+2016-12-12 22:10:21,805 - seoScrapy - ERROR - 579 - timed out
+2016-12-12 22:10:25,783 - seoScrapy - ERROR - 579 - timed out
+2016-12-12 22:10:27,771 - seoScrapy - INFO - 285 - In testLink--http://www.chinaz.com/:unreachable too
+2016-12-12 22:10:28,486 - seoScrapy - INFO - 565 - =========================
+2016-12-12 22:10:31,292 - seoScrapy - INFO - 565 - =========================
+2016-12-12 22:10:32,521 - seoScrapy - INFO - 565 - =========================
+2016-12-12 22:10:36,255 - seoScrapy - INFO - 565 - =========================
+2016-12-12 22:10:37,466 - seoScrapy - INFO - 565 - =========================
+2016-12-12 22:10:41,021 - seoScrapy - INFO - 565 - =========================
+2016-12-12 22:16:02,062 - seoScrapy - INFO - 161 - In getWebInfo
+2016-12-12 22:16:02,063 - seoScrapy - INFO - 161 - In getWebInfo
+2016-12-12 22:16:02,063 - seoScrapy - INFO - 161 - In getWebInfo
+2016-12-12 22:16:02,064 - seoScrapy - INFO - 161 - In getWebInfo
+2016-12-12 22:16:02,065 - seoScrapy - INFO - 161 - In getWebInfo
+2016-12-12 22:16:02,065 - seoScrapy - INFO - 161 - In getWebInfo
+2016-12-12 22:16:02,066 - seoScrapy - INFO - 161 - In getWebInfo
+2016-12-12 22:16:02,066 - seoScrapy - INFO - 161 - In getWebInfo
+2016-12-12 22:16:02,463 - seoScrapy - INFO - 88 - In getResponse
+2016-12-12 22:16:12,902 - seoScrapy - INFO - 88 - In getResponse
+2016-12-12 22:16:13,116 - seoScrapy - INFO - 88 - In getResponse
+2016-12-12 22:16:14,299 - seoScrapy - INFO - 88 - In getResponse
+2016-12-12 22:16:15,473 - seoScrapy - INFO - 88 - In getResponse
+2016-12-12 22:16:17,279 - seoScrapy - ERROR - 579 - timed out
+2016-12-12 22:16:18,773 - seoScrapy - INFO - 88 - In getResponse
+2016-12-12 22:16:19,526 - seoScrapy - INFO - 132 - In getBaiduWeight
+2016-12-12 22:16:19,528 - seoScrapy - INFO - 473 - In getAllweb
+2016-12-12 22:16:19,529 - seoScrapy - INFO - 308 - In getInclude
+2016-12-12 22:16:19,530 - seoScrapy - INFO - 234 - In getAlexa
+2016-12-12 22:16:19,658 - seoScrapy - INFO - 132 - In getBaiduWeight
+2016-12-12 22:16:19,660 - seoScrapy - INFO - 473 - In getAllweb
+2016-12-12 22:16:19,663 - seoScrapy - INFO - 308 - In getInclude
+2016-12-12 22:16:19,664 - seoScrapy - INFO - 234 - In getAlexa
+2016-12-12 22:16:20,041 - seoScrapy - INFO - 132 - In getBaiduWeight
+2016-12-12 22:16:20,041 - seoScrapy - INFO - 473 - In getAllweb
+2016-12-12 22:16:20,043 - seoScrapy - INFO - 308 - In getInclude
+2016-12-12 22:16:20,043 - seoScrapy - INFO - 234 - In getAlexa
+2016-12-12 22:16:20,589 - seoScrapy - ERROR - 579 - timed out
+2016-12-12 22:16:21,594 - seoScrapy - INFO - 132 - In getBaiduWeight
+2016-12-12 22:16:21,596 - seoScrapy - INFO - 473 - In getAllweb
+2016-12-12 22:16:21,596 - seoScrapy - INFO - 308 - In getInclude
+2016-12-12 22:16:21,599 - seoScrapy - INFO - 234 - In getAlexa
+2016-12-12 22:16:21,648 - seoScrapy - INFO - 132 - In getBaiduWeight
+2016-12-12 22:16:21,649 - seoScrapy - INFO - 473 - In getAllweb
+2016-12-12 22:16:21,651 - seoScrapy - INFO - 308 - In getInclude
+2016-12-12 22:16:21,652 - seoScrapy - INFO - 234 - In getAlexa
+2016-12-12 22:16:24,137 - seoScrapy - INFO - 132 - In getBaiduWeight
+2016-12-12 22:16:24,138 - seoScrapy - INFO - 473 - In getAllweb
+2016-12-12 22:16:24,140 - seoScrapy - INFO - 308 - In getInclude
+2016-12-12 22:16:24,141 - seoScrapy - INFO - 234 - In getAlexa
+2016-12-12 22:16:44,434 - seoScrapy - ERROR - 579 - 获取权重出错
+2016-12-12 22:16:49,890 - seoScrapy - ERROR - 579 - 获取权重出错
+2016-12-12 22:16:55,122 - seoScrapy - ERROR - 579 - 获取权重出错
+2016-12-12 22:16:55,258 - seoScrapy - ERROR - 579 - 获取权重出错
+2016-12-12 22:16:55,259 - seoScrapy - ERROR - 579 - 获取权重出错
+2016-12-12 22:16:55,260 - seoScrapy - ERROR - 579 - 获取权重出错
