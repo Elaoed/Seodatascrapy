@@ -16,7 +16,7 @@ with open(path.join(ROOT_PATH, 'config/db.conf'), 'r') as f:
 
 r = redis.Redis(
     port=redis_conf['redis']['port'], password=redis_conf['redis']['password'])
-
+TOKEN_IP = redis_conf['token']
 app = Flask(__name__)
 LOGGER = get_logger('acceptRequest')
 QUEUE_NAME = "request_queue"
@@ -26,12 +26,9 @@ def try_except(orig_func):
     @wraps(orig_func)
     def wrapper():
         try:
-
-            TOKEN_IP = {'ip_address': 'NuFOOb2OokoO2YrI6DkNHqWjBXUhvZdV'}
             if not request.remote_addr:
                 raise MyException('客户端IP不存在', 10010)
-            master_token = request.args.get('master_token')
-            master_token = 'NuFOOb2OokoO2YrI6DkNHqWjBXUhvZdV'
+            master_token = request.form['master_token']
             if not master_token:
                 raise MyException("token不存在", 10010)
             # if request.remote_addr not in TOKEN_IP.values():
@@ -59,6 +56,7 @@ def try_except(orig_func):
             return json.dumps(retobj)
         except Exception as e:
             LOGGER.info('%s' % e)
+            print e
             retobj = {"status": {"msg": '未知错误', "code": 10001, "time": time.strftime(
                 '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []}
             return json.dumps(retobj)

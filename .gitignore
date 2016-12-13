@@ -2,3 +2,4 @@ logs/*.log
 .DS_Store
 config/*
 TODO
+unitest.sh

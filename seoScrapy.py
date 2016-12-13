@@ -536,7 +536,12 @@ class SEOscrapy(object):
     def delFiles(self, dirpath):
         for root, dirs, files in os.walk(dirpath):
             for name in files:
-                os.remove(os.path.join(root, name))
+                try:
+                    os.remove(os.path.join(root, name))
+                except IOError:
+                    continue
+                except OSError:
+                    continue
 
     def gzipfile(self, dirpath):
         if not os.path.exists(dirpath + '/gzipFiles'):
@@ -608,6 +613,5 @@ if __name__ == "__main__":
         if not req:
             time.sleep(1)
             continue
-        print "Deal with ", req
-        t = threading.Thread(target=run_forever, args=(req, ))
-        t.start()
+        _LOGGER.info("Deal with %s" % req)
+        run_forever(req)
