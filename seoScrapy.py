@@ -275,9 +275,6 @@ class SEOscrapy(object):
             except requests.exceptions.ConnectionError as e:
                 _LOGGER.info('In testLink--%s:%s' % (link, 'url unreachable'))
                 link_status[link] = 1
-            except requests.exceptions.ConnectTimeout as e:
-                _LOGGER.info('In testLink--%s:%s' % (link, 'timeout'))
-                link_status[link] = 1
             except requests.ReadTimeout as e:
                 _LOGGER.info('In testLink--%s:%s' % (link, 'unreachable too'))
                 link_status[link] = 1
@@ -483,7 +480,7 @@ class SEOscrapy(object):
             elif re.match('http', link) or re.match('https', link):
                 useful_links.append(link)
             else:
-                print link
+                continue
 
         dirpath = os.path.dirname(os.path.realpath(__file__))
         if not os.path.exists(dirpath + '/files'):
