@@ -1,7 +1,6 @@
 # encoding=utf-8
 import re
 import httplib
-import socket
 import requests
 import jieba
 import socket
@@ -135,7 +134,7 @@ def deal_encoding(content, encoding):
     else:
         encoding = encoding_new
 
-    if not encoding in ['utf-8', 'UTF-8', 'utf8', 'UTF8']:
+    if encoding not in ['utf-8', 'UTF-8', 'utf8', 'UTF8']:
         if 'gb' in encoding or 'GB' in encoding:
             content = content.decode('gbk')
         else:
