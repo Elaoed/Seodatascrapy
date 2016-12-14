@@ -1,13 +1,10 @@
 # encoding=utf-8
 import sys
-import socket
 reload(sys)
 sys.setdefaultencoding('utf-8')
-import jieba
 import re
 from lxml import etree
 import requests
-import httplib
 from bs4 import BeautifulSoup
 try:
     import xml.etree.cElementTree as ET
@@ -18,7 +15,6 @@ import os
 from os import path
 from kits.config import ROOT_PATH
 import gzip
-from flask import Flask, request
 import json
 BufSize = 1024*8
 import redis
@@ -28,7 +24,6 @@ from kits.dealDomain import dealDomain, divArticle, deal_encoding
 from kits.MyException import MyException
 import threading
 import Queue
-import time
 QUEUE_NAME = 'request_queue'
 
 with open(path.join(ROOT_PATH, 'config/db.conf'), 'r') as f:
