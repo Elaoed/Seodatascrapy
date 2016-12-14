@@ -3,3 +3,4 @@ logs/*.log
 config/*
 TODO
 unitest.sh
+kits/*.pyc

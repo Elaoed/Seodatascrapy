@@ -2,7 +2,7 @@
 
 
 url_list=("newdun.com" "aaa.com" "cnblogs.com" "ipc.me" "sina.com" "163.com" "pubu.io" "yiqixie.com")
-url_list=("newdun.com")
+# url_list=("newdun.com")
 
 echo "Starting..................."
 
@@ -13,7 +13,7 @@ function test_link(){
 	echo "Testing getDeadLink..........."
 	for url in ${url_list[@]}
 		do
-		curl -X POST -d "domain=${url}&master_token=${master_token}" localhost:3035/getDeadLink
+		curl -X POST -d "domain=${url}&master_token=${master_token}" seo.newdun.com:80/getDeadLink
 		echo  
 		echo "================================================="
 	done
@@ -23,7 +23,7 @@ function test_web(){
 	echo "Testing getWebInfo..........."
 	for url in ${url_list[@]}
 	do
-		curl -X POST -d "domain=${url}&master_token=${master_token}" localhost:3035/getWebInfo
+		curl -X POST -d "domain=${url}&master_token=${master_token}" seo.newdun.com:80/getWebInfo
 		echo
 		echo "================================================="
 	done
@@ -37,39 +37,39 @@ function test_key_word(){
 	do
 		engine=${RANENGINE[$[$RANDOM % ${#RANENGINE[@]}]]}
 		keyword=${KEYWORDS[$[$RANDOM % ${#KEYWORDS[@]}]]}
-		curl -X POST -d "domain=${url}&search_engine=${engine}&keyword=${keyword}&master_token=${master_token}" localhost:3035/getKeywordRank
+		curl -X POST -d "domain=${url}&search_engine=${engine}&keyword=${keyword}&master_token=${master_token}" seo.newdun.com:80/getKeywordRank
 		echo
 		echo "==================================================="
 	done		
 }
 
-# test_web
+# test_web	
 # test_link
-# test_key_word
+test_key_word
 url='newdun.com'
 #==================================================
 #		raise error process/flow
 #==================================================
-curl -d "domain=${url}" 192.168.199.21:3035/getDeadLink
-echo
-echo "==========================================================="
+# curl -d "domain=${url}" seo.newdun.com:80/getDeadLink
+# echo
+# echo "==========================================================="
 
 
-curl -d "master_token=${master_token}" 192.168.199.21:3035/getDeadLink
-echo
-echo "==========================================================="
-curl -d "master_token=${master_token}&domain=${url}" 192.168.199.21:3035/getDeadLink
-echo 
-echo "==========================================================="
-curl -d "master_token=${master_token}&domain=aaa" 192.168.199.21:3035/getDeadLink
+# curl -d "master_token=${master_token}" seo.newdun.com:80/getDeadLink
+# echo
+# echo "==========================================================="
+# curl -d "master_token=${master_token}&domain=${url}" seo.newdun.com:80/getDeadLink
+# echo 
+# echo "==========================================================="
+# curl -d "master_token=${master_token}&domain=aaa" seo.newdun.com:80/getDeadLink
 
-curl -d "domain=${url}" 192.168.199.21:3035/getWebInfo
-echo
-echo "==========================================================="
-curl -d "master_token=${master_token}&domain=${url}" 192.168.199.21:3035/getWebInfo
-echo 
-echo "==========================================================="
-curl -d "master_token=${master_token}&domain=aaa" 192.168.199.21:3035/getWebInfo
+# curl -d "domain=${url}" seo.newdun.com:80/getWebInfo
+# echo
+# echo "==========================================================="
+# curl -d "master_token=${master_token}&domain=${url}" seo.newdun.com:80/getWebInfo
+# echo 
+# echo "==========================================================="
+# curl -d "master_token=${master_token}&domain=aaa" seo.newdun.com:80/getWebInfo
 
 
 

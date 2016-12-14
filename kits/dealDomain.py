@@ -20,31 +20,32 @@ def dealDomain(url):
             conn.request('GET', '/')
             res = conn.getresponse()
             if res.status == 301 or res.status == 302:
-                url = {
-                    'url': res.msg['Location'], 'code': 0, 'msg': '网站转移到了 %s' % res.msg['Location']}
+                url = {'url': res.msg['Location'], 'code': 0,
+                       'msg': 'website change url to  %s' % res.msg['Location']}
             elif res.status == 200:
-                url = {'url': 'http://%s' %
-                       url, 'code': 0, 'msg': '返回值是200'}
+                url = {'url': 'http://%s' % url, 'code': 0,
+                       'msg': 'return code is 200'}
             else:
-                url = {'url': url, 'msg': "url%s 无法解析 " %
-                       (url, res.status), 'code': 10005}
+                url = {'url': url, 'code': 10008,
+                       'msg': "can't parse url:%s, code:%s" % (url, re.status)}
         except socket.gaierror as e:
-            url = {'url': url, 'code': 10005, 'msg': 'cant parse %s' % url}
+            url = {'url': url, 'code': 10005,
+                   'msg': "can't parse url:%s" % url}
         except requests.ReadTimeout as e:
             url = {'url': url, 'code': 10005, 'msg': e}
         except socket.timeout as e:
             url = {'url': url, 'code': 10005, 'msg': e}
-    else:          # except requests.exceptions.SSLError as e:
+    else:
         try:
             res = requests.get(url, timeout=5)
             if res and res.status_code == 200:
                 url = {
-                    'url': url, 'code': 0, 'msg': 'url是完整的'}
+                    'url': url, 'code': 0, 'msg': 'url is full format'}
             else:
-                url = {'url': url, 'msg': "url%s return code:%d" %
-                       (url, res.status_code), 'code': 10008}
+                url = {'url': url, 'code': 10008,
+                       'msg': "url:%s return code:%d" % (url, res.status_code)}
         except requests.exceptions.SSLError as e:
-            url = {'url': url, 'code': 10004, 'msg': '%s' % e}
+            url = {'url': url, 'code': 10003, 'msg': '%s' % e}
 
     return url
 
