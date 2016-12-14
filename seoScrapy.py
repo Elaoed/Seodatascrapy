@@ -336,12 +336,16 @@ class SEOscrapy(object):
                     url = requests.get(url, timeout=5).url
                 except requests.ReadTimeout as e:
                     return
+                except Exception as e:
+                    return
 
             elif search_engine in ['360', 'sogou']:
                 try:
                     nurl = re.search(
                         "URL='(.*?)'", requests.get(url, timeout=5).content)
                 except requests.ReadTimeout as e:
+                    return
+                except Exception as e:
                     return
                 if nurl:
                     url = nurl.group(1)

@@ -115,6 +115,7 @@ def divArticle(content):
 
 
 def deal_encoding(content, encoding):
+
     selector = etree.HTML(content)
     metas = selector.xpath('//meta/@content')
 
@@ -139,4 +140,5 @@ def deal_encoding(content, encoding):
             content = content.decode('gbk')
         else:
             content = content.decode(encoding)
+    print encoding
     return content
