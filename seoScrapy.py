@@ -33,7 +33,6 @@ QUEUE_NAME = 'request_queue'
 
 with open(path.join(ROOT_PATH, 'config/db.conf'), 'r') as f:
     redis_conf = json.load(f)
-
 r = redis.Redis(
     port=redis_conf['redis']['port'], password=redis_conf['redis']['password'])
 
@@ -130,7 +129,7 @@ class SEOscrapy(object):
 
         else:
             _LOGGER.warning("%s's status_code is %d" % (url, res.status_code))
-            raise MyException('%s 网页无法访问' % url, 10004)
+            raise MyException("%s site can not be access" % url, 10004)
 
     def getBaiduWeight(self, url):
         _LOGGER.info('In getBaiduWeight')
@@ -185,7 +184,7 @@ class SEOscrapy(object):
         webInfo = dict()
         webInfo['title'] = None if not self.title else self.title[0]
         if not self.baiduWeight:
-            raise MyException('获取百度权重出错')
+            raise MyException("oops can't get baidu Weight", 10009)
         else:
             webInfo['baiduWeight'] = self.baiduWeight
         webInfo['keywords'] = self.keywords
@@ -199,11 +198,11 @@ class SEOscrapy(object):
         webInfo['alexa'] = self.alexa if self.alexa else 0
 
         if not self.include:
-            raise MyException('获取收录出错', 10011)
+            raise MyException("ooops can't get include", 10011)
         else:
             webInfo['include'] = self.include
 
-        retobj = {"status": {"msg": '网站详情获取成功',  "code": 1000, "time": time.strftime(
+        retobj = {"status": {"msg": 'WebInfo get Successfully',  "code": 1000, "time": time.strftime(
             '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": webInfo, "list": []}
 
         return retobj
@@ -297,7 +296,7 @@ class SEOscrapy(object):
         for i in threads:
             i.join()
 
-        retobj = {"status": {"msg": "死链接获取成功", "code": 1000, "time": time.strftime(
+        retobj = {"status": {"msg": "DeadLink get successfully", "code": 1000, "time": time.strftime(
             '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": link_status, "list": []}
         return retobj
 
@@ -369,7 +368,7 @@ class SEOscrapy(object):
             res = requests.get(
                 base_url, headers=headers, cookies=cookies, timeout=5).content
         except requests.exceptions.ConnectionError as e:
-            raise MyException('%s 不能被解析' % search_engine, 10004)
+            raise MyException("%s can not be parsed" % search_engine, 10004)
         first_page = res
         selector = etree.HTML(res)
         if search_engine in 'sogou':
@@ -459,7 +458,7 @@ class SEOscrapy(object):
         result, content = self.getBySearchEngine(
             domain, ENGINE[search_engine]['base_url'] + keyword, search_engine)
 
-        retobj = {"status": {"msg": '关键字排名获取成功', "code": 1000, "time": time.strftime(
+        retobj = {"status": {"msg": 'KeywordRank data get successful', "code": 1000, "time": time.strftime(
             '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": result, "list": content}
 
         return retobj
@@ -564,15 +563,15 @@ def try_except(orig_func):
             _LOGGER.info('=========================')
         except requests.exceptions.MissingSchema as e:
             _LOGGER.error(e)
-            retobj = json.dumps({"status": {"msg": 'URL错误', "code": 10004, "time": time.strftime(
+            retobj = json.dumps({"status": {"msg": 'Missing Schema', "code": 10004, "time": time.strftime(
                 '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []})
         except requests.ReadTimeout as e:
             _LOGGER.error(e)
-            retobj = json.dumps({"status": {"msg": '连接超时', "code": 10005, "time": time.strftime(
+            retobj = json.dumps({"status": {"msg": 'Read Time out', "Read Time out": 10005, "time": time.strftime(
                 '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []})
         except requests.exceptions.ConnectionError as e:
             _LOGGER.error(e)
-            retobj = json.dumps({"status": {"msg": '链接错误', "code": 10005, "time": time.strftime(
+            retobj = json.dumps({"status": {"msg": 'Connection Error', "code": 10005, "time": time.strftime(
                 '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []})
         except MyException as e:
             _LOGGER.error(e.msg)
@@ -580,7 +579,7 @@ def try_except(orig_func):
                 '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []}
         except Exception as e:
             _LOGGER.critical(e)
-            retobj = {"status": {"msg": '未知错误', "code": 10001, "time": time.strftime(
+            retobj = {"status": {"msg": 'Unknown Error...Please inform the Administrator', "code": 10001, "time": time.strftime(
                 '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []}
 
         finally:
