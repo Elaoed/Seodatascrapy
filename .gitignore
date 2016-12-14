@@ -4,3 +4,4 @@ config/*
 TODO
 unitest.sh
 kits/*.pyc
+.idea/*

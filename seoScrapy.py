@@ -123,7 +123,7 @@ class SEOscrapy(object):
             self.keywords = keywords
 
         else:
-            _LOGGER.warning("%s's status_code is %d" % (url, res.status_code))
+            _LOGGER.warning("%s's status_code is %d", url, res.status_code)
             raise MyException("%s site can not be access" % url, 10004)
 
     def getBaiduWeight(self, url):
@@ -137,8 +137,8 @@ class SEOscrapy(object):
             if jres['error_code'] == 0:
                 self.baiduWeight = jres['result']
             else:
-                _LOGGER.error(
-                    'res from juhe.cn: reason:%s, error_code:%d' % (jres['reason'], jres['error_code']), 10005)
+                _LOGGER.error('res from juhe.cn: reason:%s, error_code:%d',
+                              jres['reason'], jres['error_code'])
                 self.baiduWeight = {
                     "To": "0",
                     "From": "0",
@@ -146,8 +146,8 @@ class SEOscrapy(object):
                 }
 
         else:
-            _LOGGER.error(
-                "On getBaiduWeight---res didnt response or status_code:%s" % res.status_code, 10007)
+            _LOGGER.error("On getBaiduWeight---\
+                res didnt response or status_code:%s", res.status_code)
             self.baiduWeight = {
                 "To": "0",
                 "From": "0",
@@ -203,7 +203,7 @@ class SEOscrapy(object):
         return retobj
 
     def getfriendLinks(self, url):
-        _LOGGER.info('In getFriendLinks url:%s' % url)
+        _LOGGER.info('In getFriendLinks url:%s', url)
         res = requests.get(url, headers=headers, timeout=5)
         html = deal_encoding(res.content, res.encoding)
         selector = etree.HTML(html)
@@ -268,16 +268,16 @@ class SEOscrapy(object):
                 if res.status_code in [200, 301, 302]:
                     link_status[link] = 0
             except requests.exceptions.ConnectionError as e:
-                _LOGGER.info('In testLink--%s:%s' % (link, 'url unreachable'))
+                _LOGGER.info('In testLink--%s:%s', link, 'url unreachable')
                 link_status[link] = 1
             except requests.ReadTimeout as e:
-                _LOGGER.info('In testLink--%s:%s' % (link, 'unreachable too'))
+                _LOGGER.info('In testLink--%s:%s', link, 'unreachable too')
                 link_status[link] = 1
             except requests.exceptions.ReadTimeout as e:
-                _LOGGER.info('In testLink--%s:%s' % (link, 'unreachable too'))
+                _LOGGER.info('In testLink--%s:%s', link, 'unreachable too')
                 link_status[link] = 1
             except Exception as e:
-                _LOGGER.info('In testLink--%s:%s' % (link, 'Invilid url'))
+                _LOGGER.info('In testLink--%s:%s', link, 'Invilid url')
                 link_status[link] = 1
 
         for i in range(60):
@@ -354,7 +354,7 @@ class SEOscrapy(object):
             content.append(
                 {'title': title, 'desc': desc, 'url': url, 'count': count})
 ########################## embeded function finished  ####################
-        _LOGGER.info('In %s' % search_engine)
+        _LOGGER.info('Using search engine:%s',  search_engine)
 
         try:
             res = requests.get(
@@ -604,5 +604,5 @@ if __name__ == "__main__":
         if not req:
             time.sleep(1)
             continue
-        _LOGGER.info("Deal with %s" % req)
+        _LOGGER.info("Deal with %s", req)
         run_forever(req)

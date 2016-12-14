@@ -27,7 +27,7 @@ def dealDomain(url):
                        'msg': 'return code is 200'}
             else:
                 url = {'url': url, 'code': 10008,
-                       'msg': "can't parse url:%s, code:%s" % (url, re.status)}
+                       'msg': "can't parse url:%s, code:%s" % (url, res.status)}
         except socket.gaierror as e:
             url = {'url': url, 'code': 10005,
                    'msg': "can't parse url:%s" % url}
