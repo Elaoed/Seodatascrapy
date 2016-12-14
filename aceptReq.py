@@ -38,17 +38,16 @@ def try_except(orig_func):
             #     raise MyException(
             #         '你的ip对应的token错误', 10010)
             return orig_func()
-        except requests.exceptions.ConnectionError as e:
-            LOGGER.error(e)
-            retobj = {"status": {"msg": 'Connection error'.format(
-                e), "code": 10004, "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []}
-            return json.dumps(retobj)
         except requests.exceptions.SSLError as e:
             LOGGER.info('%s' % e)
             retobj = {"status": {"msg": 'HTTPS ERROR--for example:https://baidu.com without www', "code": 10004, "time": time.strftime(
                 '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []}
             return json.dumps(retobj)
-
+        except requests.exceptions.ConnectionError as e:
+            LOGGER.error(e)
+            retobj = {"status": {"msg": 'Connection error', "code": 10004, "time": time.strftime(
+                '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []}
+            return json.dumps(retobj)
         except MyException as e:
             LOGGER.info('%s' % e.msg)
             retobj = {"status": {"msg": '%s' % e.msg, "code": e.code, "time": time.strftime(
@@ -56,7 +55,6 @@ def try_except(orig_func):
             return json.dumps(retobj)
         except Exception as e:
             LOGGER.info('%s' % e)
-            print e
             retobj = {"status": {"msg": 'Unknown Error...Please inform the Administrator', "code": 10001, "time": time.strftime(
                 '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []}
             return json.dumps(retobj)
@@ -139,4 +137,4 @@ def index3():
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5003, debug=True)
+    app.run(host='0.0.0.0', port=5003)
