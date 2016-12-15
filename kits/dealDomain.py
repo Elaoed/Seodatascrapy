@@ -9,6 +9,17 @@ import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
+headers = {
+    'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Encoding': 'gzip, deflate, sdch',
+    'Accept-Language': 'en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4,ja;q=0.2',
+    'Cache-Control': 'max-age=0',
+    'Connection': 'keep-alive',
+    'DNT': '1',
+    'Upgrade-Insecure-Requests': '1'
+}
+
 
 def dealDomain(url):
     if url == "www.163.com":
@@ -16,7 +27,7 @@ def dealDomain(url):
     if not re.search('^http|^https', url if url else ""):
         try:
             conn = httplib.HTTPConnection(url, 80, timeout=4)
-            conn.request('GET', '/')
+            conn.request('GET', '/', headers=headers)
             res = conn.getresponse()
             if res.status == 301 or res.status == 302:
                 url = {'url': res.msg['Location'], 'code': 0,
@@ -134,11 +145,9 @@ def deal_encoding(content, encoding):
         encoding = encoding
     else:
         encoding = encoding_new
-
     if encoding not in ['utf-8', 'UTF-8', 'utf8', 'UTF8']:
         if 'gb' in encoding or 'GB' in encoding:
             content = content.decode('gbk')
         else:
             content = content.decode(encoding)
-    print encoding
     return content

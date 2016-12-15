@@ -446,17 +446,13 @@ class SEOscrapy(object):
         return result, content
 
     def getKeywordRank(self, domain, keyword, search_engine):
-        _LOGGER.info('In getKeywordRank ')
-
         redis_key = 'getKeywordRank-%s-%s-%s' % (
             domain, keyword, search_engine)
 
         result, content = self.getBySearchEngine(
             domain, ENGINE[search_engine]['base_url'] + keyword, search_engine)
-
         retobj = {"status": {"msg": 'KeywordRank data get successful', "code": 1000, "time": time.strftime(
             '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": result, "list": content}
-
         return retobj
 
     def getAllweb(self):

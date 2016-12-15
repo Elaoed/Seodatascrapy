@@ -13,7 +13,7 @@ function test_link(){
 	echo "Testing getDeadLink..........."
 	for url in ${url_list[@]}
 		do
-		curl -X POST -d "domain=${url}&master_token=${master_token}" localhost:5003/getDeadLink
+		curl -X POST -d "domain=${url}&master_token=${master_token}" localhost:3035/getDeadLink
 		echo  
 		echo "================================================="
 	done
@@ -23,7 +23,7 @@ function test_web(){
 	echo "Testing getWebInfo..........."
 	for url in ${url_list[@]}
 	do
-		curl -X POST -d "domain=${url}&master_token=${master_token}" localhost:5003/getWebInfo
+		curl -X POST -d "domain=${url}&master_token=${master_token}" localhost:3035/getWebInfo
 		echo
 		echo "================================================="
 	done
@@ -37,13 +37,13 @@ function test_key_word(){
 	do
 		engine=${RANENGINE[$[$RANDOM % ${#RANENGINE[@]}]]}
 		keyword=${KEYWORDS[$[$RANDOM % ${#KEYWORDS[@]}]]}
-		curl -X POST -d "domain=${url}&search_engine=${engine}&keyword=${keyword}&master_token=${master_token}" localhost:5003/getKeywordRank
+		curl -X POST -d "domain=${url}&search_engine=${engine}&keyword=${keyword}&master_token=${master_token}" localhost:3035/getKeywordRank
 		echo
 		echo "==================================================="
 	done		
 }
 
-curl -X POST -d "domain=ruanzongyu.top&master_token=${master_token}&search_engine=sogou&keyword=12121" localhost:5003/getKeywordRank
+curl -X POST -d "domain=lem8.com&master_token=${master_token}&search_engine=baidu&keyword=123145" localhost:3035/getKeywordRank
 # curl -X POST -d "domain=huituzi.net&master_token=${master_token}" localhost:5003/getKeywordRank
 # echo
 # test_web	
