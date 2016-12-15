@@ -39,7 +39,7 @@ def dealDomain(url):
                 url = {'url': url, 'code': 10008,
                        'msg': "can't parse url:%s, code:%s" % (url, res.status)}
         except socket.gaierror as e:
-            url = {'url': url, 'code': 10005,
+            url = {'url': url, 'code': 10004,
                    'msg': "can't parse url:%s" % url}
         except requests.ReadTimeout as e:
             url = {'url': url, 'code': 10005, 'msg': e}

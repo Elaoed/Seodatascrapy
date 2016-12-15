@@ -25,6 +25,7 @@ from kits.MyException import MyException
 import threading
 import Queue
 QUEUE_NAME = 'request_queue'
+webQueue = Queue.Queue()
 
 with open(path.join(ROOT_PATH, 'config/db.conf'), 'r') as f:
     redis_conf = json.load(f)
@@ -85,7 +86,7 @@ class SEOscrapy(object):
 
     def getResponse(self, url):
 
-        _LOGGER.info('In getResponse')
+        _LOGGER.info(' In getResponse')
 
         self.url = url
         res = requests.get(url, timeout=5)
@@ -132,7 +133,7 @@ class SEOscrapy(object):
         appkey = '618e7a46808573be2401596582de62fb'
         res = requests.post(
             'http://op.juhe.cn/baiduWeight/index', data={'key': appkey, 'domain': url}, timeout=5)
-        if res and res.status_code == 200:
+        if res and res.status_code == 200 and res.content:
             jres = json.loads(res.content)
             if jres['error_code'] == 0:
                 self.baiduWeight = jres['result']
@@ -155,7 +156,6 @@ class SEOscrapy(object):
             }
 
     def getWebInfo(self, domain):
-        _LOGGER.info('In getWebInfo')
 
         url = dealDomain(domain)
         if url['code'] != 0:
@@ -197,13 +197,13 @@ class SEOscrapy(object):
         else:
             webInfo['include'] = self.include
 
-        retobj = {"status": {"msg": 'WebInfo get Successfully',  "code": 1000, "time": time.strftime(
+        retobj = {"status": {"msg": 'WebInfo get Successfully, domain:%s' % domain,  "code": 1000, "time": time.strftime(
             '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": webInfo, "list": []}
 
         return retobj
 
     def getfriendLinks(self, url):
-        _LOGGER.info('In getFriendLinks url:%s', url)
+
         res = requests.get(url, headers=headers, timeout=5)
         html = deal_encoding(res.content, res.encoding)
         selector = etree.HTML(html)
@@ -231,7 +231,7 @@ class SEOscrapy(object):
         # Element ALEXA is root  openfile has to getroot fromstring dont
         try:
             html = requests.get(
-                'http://data.alexa.com/data?cli=10&&url=%s' % url, timeout=8).content
+                'http://data.alexa.com/data?cli=10&&url=%s' % url, timeout=8, headers=headers).content
         except requests.ReadTimeout as e:
             self.alexa = None
             return
@@ -243,7 +243,6 @@ class SEOscrapy(object):
         self.alexa = alexa
 
     def getDeadLink(self, url):
-        _LOGGER.info("In getDeadLink")
         url = dealDomain(url)
         if url['code'] != 0:
             raise MyException(url['msg'], url['code'])
@@ -264,20 +263,20 @@ class SEOscrapy(object):
                 return
 
             try:
-                res = requests.get(link.strip(), timeout=5)
+                res = requests.get(link.strip(), timeout=5, headers=headers)
                 if res.status_code in [200, 301, 302]:
                     link_status[link] = 0
             except requests.exceptions.ConnectionError as e:
-                _LOGGER.info('In testLink--%s:%s', link, 'url unreachable')
+                _LOGGER.info('Dead link:%s %s', link, 'url unreachable')
                 link_status[link] = 1
             except requests.ReadTimeout as e:
-                _LOGGER.info('In testLink--%s:%s', link, 'unreachable too')
+                _LOGGER.info('Dead link:%s %s', link, 'unreachable too')
                 link_status[link] = 1
             except requests.exceptions.ReadTimeout as e:
-                _LOGGER.info('In testLink--%s:%s', link, 'unreachable too')
+                _LOGGER.info('Dead link:%s %s', link, 'unreachable too')
                 link_status[link] = 1
             except Exception as e:
-                _LOGGER.info('In testLink--%s:%s', link, 'Invilid url')
+                _LOGGER.info('Dead link:%s %s', link, e)
                 link_status[link] = 1
 
         for i in range(60):
@@ -288,12 +287,11 @@ class SEOscrapy(object):
         for i in threads:
             i.join()
 
-        retobj = {"status": {"msg": "DeadLink get successfully", "code": 1000, "time": time.strftime(
+        retobj = {"status": {"msg": "DeadLink get successfully, domain:%s" % url, "code": 1000, "time": time.strftime(
             '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": link_status, "list": []}
         return retobj
 
     def getInclude(self, url):
-        _LOGGER.info('In getInclude')
 
         if 'http' in url or 'https' in url:
             url = '.'.join(url.split('/')[2].split('.')[-2:])
@@ -446,12 +444,10 @@ class SEOscrapy(object):
         return result, content
 
     def getKeywordRank(self, domain, keyword, search_engine):
-        redis_key = 'getKeywordRank-%s-%s-%s' % (
-            domain, keyword, search_engine)
 
         result, content = self.getBySearchEngine(
             domain, ENGINE[search_engine]['base_url'] + keyword, search_engine)
-        retobj = {"status": {"msg": 'KeywordRank data get successful', "code": 1000, "time": time.strftime(
+        retobj = {"status": {"msg": '%s keyword data get good' % domain, "code": 1000, "time": time.strftime(
             '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": result, "list": content}
         return retobj
 
@@ -552,7 +548,6 @@ def try_except(orig_func):
 
         try:
             retobj = orig_func(req)
-            _LOGGER.info('=========================')
         except requests.exceptions.MissingSchema as e:
             _LOGGER.error(e)
             retobj = json.dumps({"status": {"msg": 'Missing Schema', "code": 10004, "time": time.strftime(
@@ -563,8 +558,8 @@ def try_except(orig_func):
                 '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []})
         except requests.exceptions.ConnectionError as e:
             _LOGGER.error(e)
-            retobj = json.dumps({"status": {"msg": 'Connection Error', "code": 10005, "time": time.strftime(
-                '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []})
+            retobj = {"status": {"msg": 'Connection Error', "code": 10005, "time": time.strftime(
+                '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []}
         except MyException as e:
             _LOGGER.error(e.msg)
             retobj = {"status": {"msg": str(e.msg), "code": e.code, "time": time.strftime(
@@ -577,12 +572,14 @@ def try_except(orig_func):
         finally:
             r.set(req, json.dumps(retobj))
             r.expire(req, 43200)
+            _LOGGER.info('=========================')
     return wrapper
 
 
 @try_except
 def run_forever(req):
 
+    _LOGGER.info("Deal with %s", req)
     param_string = req.split('-')
     result = ""
     if param_string[0] in 'getKeywordRank':
@@ -595,14 +592,36 @@ def run_forever(req):
 
     return result
 
+
+def fetchFromQueue():
+    while True:
+
+        try:
+            req = webQueue.get(timeout=5)
+        except Queue.Empty:
+            continue
+        except Exception as e:
+            _LOGGER.critical("Error in webQueue:%s", e)
+            continue
+        if not req:
+            time.sleep(1)
+            continue
+        run_forever(req)
+
 if __name__ == "__main__":
     seo = SEOscrapy()
     FUNC = {'getKeywordRank': seo.getKeywordRank,
             'getDeadLink': seo.getDeadLink, 'getWebInfo': seo.getWebInfo}
+    webTask = threading.Thread(target=fetchFromQueue)
+    webTask.start()
+
     while True:
         req = r.rpop(QUEUE_NAME)
         if not req:
             time.sleep(1)
             continue
-        _LOGGER.info("Deal with %s", req)
-        run_forever(req)
+        if req.split('-')[0] in 'getWebInfo':
+            webQueue.put(req)
+        else:
+            task = threading.Thread(target=run_forever, args=(req, ))
+            task.start()

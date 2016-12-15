@@ -69,8 +69,11 @@ def query_redis(redis_key):
         retobj = json.dumps({"status": {"msg": 'Querying.... Please wait', "code": 10000, "time": time.strftime(
             '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []})
         r.set(redis_key, retobj)
+        r.expire(redis_key, 30)
         r.lpush(QUEUE_NAME, redis_key)
-
+    elif json.loads(result)['status']['code'] in [10008, 10011, 10009, 10005]:
+        r.lpush(QUEUE_NAME, redis_key)
+        retobj = result
     else:
         retobj = result
     return retobj
@@ -137,4 +140,4 @@ def index3():
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5003)
+    app.run(host='0.0.0.0', port=5003, debug=True)
