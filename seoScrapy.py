@@ -48,6 +48,14 @@ cookies = {'ABTEST': '8|1480486710|v17', 'IPLOC': 'CN3301', 'PHPSESSID': 'okc1fr
            'SUIR': '1480486710', 'SUV': '00022B8973C7A1E9583E6F378BBF2990', 'browerV': '3',
            'ld': 'N@n52lllll2Y5uDTlllllVkMN$6llllltDWPfyllll7lllll4klll5@@@@@@@@@@', 'osV': '2',
            'pgv_pvi': '6522359808', 'pgv_si': 's2382888960', 'sct': '6', 'sst0': '509', 'taspeed': 'taspeedexist'}
+cookies = {'ABTEST': '8|1480486710|v17', 'IPLOC': 'CN3301',
+           'SUV': '00022B8973C7A1E9583E6F378BBF2990', 'pgv_pvi': '6522359808',
+           'CXID': 'E956BE05F59EE72F925850993B6EDEE3',
+           'sw_uuid': '2757471428', 'sg_uuid': '1914649634',
+           'ad': '@Z4MSZllll2Y5f@3lllllVPydTkllllltDWPfyllll9lllllRklll5@@@@@@@@@@',
+           'SUID': '0B25797D556C860A580095E0000ACAF9', 'SNUID': 'AE7F60E6D9DF99663127B35BDAB0F736',
+           'sct': '24', 'ld': 's5n52lllll2Y5uDTlllllVPFvoZllllltDWPfyllll9lllll9llll5@@@@@@@@@@',
+           'browerV': '3', 'osV': '2', 'sst0': '888'}
 
 
 _LOGGER = get_logger("seoScrapy")
@@ -76,7 +84,7 @@ ENGINE = {
 }
 
 
-class SEOscrapy(object):
+class SeoScrapy(object):
 
     def __init__(self):
         self.url = ''
@@ -157,6 +165,7 @@ class SEOscrapy(object):
 
     def getWebInfo(self, domain):
 
+        self.domain = domain
         url = dealDomain(domain)
         if url['code'] != 0:
             raise MyException(url['msg'], url['code'])
@@ -197,7 +206,7 @@ class SEOscrapy(object):
         else:
             webInfo['include'] = self.include
 
-        retobj = {"status": {"msg": 'WebInfo get Successfully, domain:%s' % domain,  "code": 1000, "time": time.strftime(
+        retobj = {"status": {"msg": '%s get WebInfo good' % domain,  "code": 1000, "time": time.strftime(
             '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": webInfo, "list": []}
 
         return retobj
@@ -278,8 +287,8 @@ class SEOscrapy(object):
             except Exception as e:
                 _LOGGER.info('Dead link:%s %s', link, e)
                 link_status[link] = 1
-
-        for i in range(60):
+        thread_total = 60 if len(links) > 60 else len(links)
+        for i in range(thread_total):
             threads.append(
                 threading.Thread(target=testLink))
             threads[-1].start()
@@ -287,7 +296,7 @@ class SEOscrapy(object):
         for i in threads:
             i.join()
 
-        retobj = {"status": {"msg": "DeadLink get successfully, domain:%s" % url, "code": 1000, "time": time.strftime(
+        retobj = {"status": {"msg": "%s get DeadLink good" % url, "code": 1000, "time": time.strftime(
             '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": link_status, "list": []}
         return retobj
 
@@ -321,7 +330,7 @@ class SEOscrapy(object):
         include = {'baidu': baidu, '360': _360, 'sogou': sogou, 'google': 0}
         self.include = include
 
-    def getBySearchEngine(self, domain, base_url, search_engine):
+    def getBySearchEngine(self, domain, base_url, search_engine, keyword):
 
         def checkEngine(domain, div, count, search_engine, topten, content):
             url = div.xpath(
@@ -429,25 +438,32 @@ class SEOscrapy(object):
         ###############################################
 
         count = 0
-        content = []
-        selector = etree.HTML(first_page)
-        divs = selector.xpath(ENGINE[search_engine]['content_xpath'])[:10]
-        for div in divs:
-            count += 1
-            threads.append(
-                threading.Thread(target=checkEngine, args=(domain, div, count, search_engine, True, content)))
-            threads[-1].start()
+        top_ten_key = '%s:::%s' % (search_engine, keyword)
+        content = r.get(top_ten_key)
 
-        for i in threads:
-            i.join()
-        content = sorted(content, key=lambda info: info['count'])
+        if not content:
+            content = []
+            selector = etree.HTML(first_page)
+            divs = selector.xpath(ENGINE[search_engine]['content_xpath'])[:10]
+            for div in divs:
+                count += 1
+                threads.append(
+                    threading.Thread(target=checkEngine, args=(domain, div, count, search_engine, True, content)))
+                threads[-1].start()
+
+            for i in threads:
+                i.join()
+            content = sorted(content, key=lambda info: info['count'])
+            r.set(top_ten_key, json.dumps(content))
+        else:
+            content = json.loads(content)
         return result, content
 
     def getKeywordRank(self, domain, keyword, search_engine):
 
         result, content = self.getBySearchEngine(
-            domain, ENGINE[search_engine]['base_url'] + keyword, search_engine)
-        retobj = {"status": {"msg": '%s keyword data get good' % domain, "code": 1000, "time": time.strftime(
+            domain, ENGINE[search_engine]['base_url'] + keyword, search_engine, keyword)
+        retobj = {"status": {"msg": '%s keyword get good' % domain, "code": 1000, "time": time.strftime(
             '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": result, "list": content}
         return retobj
 
@@ -474,11 +490,14 @@ class SEOscrapy(object):
                 continue
 
         dirpath = os.path.dirname(os.path.realpath(__file__))
-        if not os.path.exists(dirpath + '/files'):
-            os.mkdir(dirpath + '/files')
+        before_filepath = os.path.join(dirpath, 'files/%s_files' % self.domain)
+        gzip_filepath = os.path.join(
+            dirpath, 'files/%s_gzipfiles' % self.domain)
+        if not os.path.exists(before_filepath):
+            os.makedirs(before_filepath)
 
-        def downSourceFile(link, i):
-            filename = os.path.join(dirpath, 'files/%d' % i)
+        def downSourceFile(link, i, before_filepath):
+            filename = os.path.join(before_filepath + '/' + str(i))
             with open(filename, 'wb') as f:
                 try:
                     source_file = requests.get(link, timeout=2).content
@@ -491,21 +510,22 @@ class SEOscrapy(object):
         threads = []
         for i in range(len(useful_links)):
             t = threading.Thread(
-                target=downSourceFile, args=(useful_links[i], i))
+                target=downSourceFile, args=(useful_links[i], i, before_filepath))
             t.start()
             threads.append(t)
 
         for i in threads:
             i.join()
 
-        with open(dirpath + '/files/index.html', 'wb') as f:
+        with open(os.path.join(before_filepath, 'index.html'), 'wb') as f:
             f.write(self.content)
-        pre_size = (int(self.getsize(dirpath + '/files'))/1000)
+        pre_size = (int(self.getsize(before_filepath))/1000)
         self.pre_size = '%dk' % pre_size
-        post_size = (int(self.gzipfile(dirpath))/1000)
+        post_size = (int(self.gzipfile(before_filepath, gzip_filepath))/1000)
         self.post_size = '%dk' % post_size
-        self.delFiles(dirpath + '/files')
-        self.delFiles(dirpath + '/gzipFiles')
+
+        self.delFiles(before_filepath)
+        self.delFiles(gzip_filepath)
 
         try:
             self.grate = str(
@@ -530,15 +550,15 @@ class SEOscrapy(object):
                 except OSError:
                     continue
 
-    def gzipfile(self, dirpath):
-        if not os.path.exists(dirpath + '/gzipFiles'):
-            os.mkdir(dirpath + '/gzipFiles')
-        for root, dirs, files in os.walk(dirpath + '/files'):
+    def gzipfile(self, before_filepath, gzip_filepath):
+        if not os.path.exists(gzip_filepath):
+            os.makedirs(gzip_filepath)
+        for root, dirs, files in os.walk(before_filepath):
             for file in files:
-                f = gzip.open(dirpath + '/gzipFiles/%s.gz' % file, 'wb')
-                f.write(open(dirpath + '/files/%s' % file).read())
+                f = gzip.open(os.path.join(gzip_filepath, file), 'wb')
+                f.write(open(os.path.join(before_filepath, file)).read())
                 f.close()
-        return self.getsize(dirpath+'/gzipFiles')
+        return self.getsize(gzip_filepath)
 
 
 def try_except(orig_func):
@@ -550,36 +570,39 @@ def try_except(orig_func):
             retobj = orig_func(req)
         except requests.exceptions.MissingSchema as e:
             _LOGGER.error(e)
-            retobj = json.dumps({"status": {"msg": 'Missing Schema', "code": 10004, "time": time.strftime(
-                '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []})
+            retobj = {"status": {"msg": 'Missing Schema', "code": 10004,
+                                 "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
+                      "info": {}, "list": []}
         except requests.ReadTimeout as e:
             _LOGGER.error(e)
-            retobj = json.dumps({"status": {"msg": 'Read Time out', "Read Time out": 10005, "time": time.strftime(
-                '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []})
+            retobj = {"status": {"msg": 'Read Time out', "Read Time out": 10005,
+                                 "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
+                      "info": {}, "list": []}
         except requests.exceptions.ConnectionError as e:
             _LOGGER.error(e)
             retobj = {"status": {"msg": 'Connection Error', "code": 10005, "time": time.strftime(
                 '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []}
         except MyException as e:
             _LOGGER.error(e.msg)
-            retobj = {"status": {"msg": str(e.msg), "code": e.code, "time": time.strftime(
-                '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []}
+            retobj = {"status": {"msg": str(e.msg), "code": e.code,
+                                 "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
+                      "info": {}, "list": []}
         except Exception as e:
             _LOGGER.critical(e)
-            retobj = {"status": {"msg": 'Unknown Error...Please inform the Administrator', "code": 10001, "time": time.strftime(
-                '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []}
-
+            retobj = {"status": {"msg": 'Unknown Error...Please inform the Administrator', "code": 10001,
+                                 "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
+                      "info": {}, "list": []}
         finally:
             r.set(req, json.dumps(retobj))
             r.expire(req, 43200)
-            _LOGGER.info('=========================')
+            _LOGGER.info('%s ==============', req)
     return wrapper
 
 
 @try_except
 def run_forever(req):
 
-    _LOGGER.info("Deal with %s", req)
+    _LOGGER.info("Deal %s", req)
     param_string = req.split('-')
     result = ""
     if param_string[0] in 'getKeywordRank':
@@ -592,36 +615,16 @@ def run_forever(req):
 
     return result
 
-
-def fetchFromQueue():
-    while True:
-
-        try:
-            req = webQueue.get(timeout=5)
-        except Queue.Empty:
-            continue
-        except Exception as e:
-            _LOGGER.critical("Error in webQueue:%s", e)
-            continue
-        if not req:
-            time.sleep(1)
-            continue
-        run_forever(req)
-
 if __name__ == "__main__":
-    seo = SEOscrapy()
+    seo = SeoScrapy()
     FUNC = {'getKeywordRank': seo.getKeywordRank,
             'getDeadLink': seo.getDeadLink, 'getWebInfo': seo.getWebInfo}
-    webTask = threading.Thread(target=fetchFromQueue)
-    webTask.start()
 
     while True:
         req = r.rpop(QUEUE_NAME)
         if not req:
             time.sleep(1)
             continue
-        if req.split('-')[0] in 'getWebInfo':
-            webQueue.put(req)
-        else:
-            task = threading.Thread(target=run_forever, args=(req, ))
-            task.start()
+        task = threading.Thread(target=run_forever, args=(req, ))
+        task.start()
+        time.sleep(0.3)

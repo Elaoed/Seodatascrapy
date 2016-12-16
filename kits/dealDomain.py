@@ -45,6 +45,9 @@ def dealDomain(url):
             url = {'url': url, 'code': 10005, 'msg': e}
         except socket.timeout as e:
             url = {'url': url, 'code': 10005, 'msg': e}
+        except socket.error as e:
+            url = {'url': url, 'code': 10004,
+                   'msg': "can't parse url:%s" % url}
     else:
         try:
             res = requests.get(url, timeout=5)

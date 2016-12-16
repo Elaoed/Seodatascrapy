@@ -1,25 +1,26 @@
 # encoding=utf-8
-from flask import Flask, request
-import redis
-from kits.log import get_logger
-from functools import wraps
+'''accept request from users and make simple format check'''
 import re
 import time
 import json
-from kits.dealDomain import dealDomain
-import requests
-from kits.MyException import MyException
-from kits.config import ROOT_PATH
 from os import path
+from functools import wraps
+import redis
+import requests
+from flask import Flask, request
+from kits.config import ROOT_PATH
+from kits.dealDomain import dealDomain
+from kits.log import get_logger
+from kits.MyException import MyException
+
 with open(path.join(ROOT_PATH, 'config/db.conf'), 'r') as f:
     redis_conf = json.load(f)
-
 r = redis.Redis(
     port=redis_conf['redis']['port'], password=redis_conf['redis']['password'])
 TOKEN_IP = redis_conf['token']
-app = Flask(__name__)
 LOGGER = get_logger('acceptRequest')
 QUEUE_NAME = "request_queue"
+app = Flask(__name__)
 
 
 def try_except(orig_func):
@@ -69,7 +70,7 @@ def query_redis(redis_key):
         retobj = json.dumps({"status": {"msg": 'Querying.... Please wait', "code": 10000, "time": time.strftime(
             '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []})
         r.set(redis_key, retobj)
-        r.expire(redis_key, 30)
+        r.expire(redis_key, 60)
         r.lpush(QUEUE_NAME, redis_key)
     elif json.loads(result)['status']['code'] in [10008, 10011, 10009, 10005]:
         r.lpush(QUEUE_NAME, redis_key)
@@ -140,4 +141,4 @@ def index3():
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5003, debug=True)
+    app.run(host='0.0.0.0', port=5003)
