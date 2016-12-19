@@ -29,14 +29,14 @@ def try_except(orig_func):
         try:
             master_token = request.values.get('master_token')
             if not master_token:
-                raise MyException("Token doesn't exist", 10010)
+                raise MyException("Token doesn't exist", 10009)
 
             if request.remote_addr not in TOKEN_IP.keys():
                 raise MyException(
-                    'your Ip is not allow to acess this interface', 10010)
+                    'your Ip is not allow to acess this interface', 10009)
             if TOKEN_IP[request.remote_addr] not in master_token:
                 raise MyException(
-                    'the token of corresponding ip is wrong', 10010)
+                    'the token of corresponding ip is wrong', 10009)
             return orig_func()
         except requests.exceptions.SSLError as e:
             LOGGER.info('%s' % e)
@@ -87,7 +87,7 @@ def query_redis(redis_key):
         r.set(redis_key, retobj)
         r.expire(redis_key, 60)
         r.lpush(QUEUE_NAME, redis_key)
-    elif json.loads(result)['status']['code'] in [10008, 10011, 10005]:
+    elif json.loads(result)['status']['code'] in [10005, 10008, 10010, 10011, 10012, 10020]:
         r.lpush(QUEUE_NAME, redis_key)
         retobj = result
     else:
@@ -165,5 +165,20 @@ def server_info(redis_key):
 def get_weight(redis_key):
     return query_redis(redis_key)
 
+
+@app.route('/getTopten', methods=['POST'])
+@try_except
+def get_top_ten():
+    keyword = request.values.get('keyword')
+    search_engine = request.values.get('search_engine')
+    if keyword and search_engine:
+        if search_engine not in ['baidu', 'sogou', '360']:
+            raise MyException("Search_egine not right", 10006)
+        redis_key = "top_ten:::%s:::%s" % (search_engine, keyword)
+        return query_redis(redis_key)
+    else:
+        raise MyException("top_ten--param not right", 10002)
+
+
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=3035)
+    app.run(host='0.0.0.0', port=3035, debug=True)

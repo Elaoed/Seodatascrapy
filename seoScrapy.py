@@ -287,11 +287,97 @@ class SeoScrapy(object):
                       "info": include, "list": []}
         return retobj
 
-    def get_by_search_engine(self, domain, base_url, search_engine, keyword):
+    def get_url(self, div, search_engine):
+        url = div.xpath(ENGINE[search_engine]['url_xpath'])
+        if not url:
+            return None
+        url = url[0]
+        try:
+            if search_engine in 'baidu':
+                nurl = requests.get(url, timeout=5).url
+            else:
+                nurl = re.search(
+                    "URL='(.*?)'", requests.get(url, timeout=5).content)
+                nurl = nurl.group(1) if nurl else None
+            return nurl
+        except requests.ReadTimeout as e:
+            return None
+        except Exception as e:
+            return None
 
-        def checkEngine(domain, div, count, search_engine, topten, content):
-            url = div.xpath(
-                ENGINE[search_engine]['url_xpath'])
+    def engine_data(self, div, count, search_engine, content):
+        url = self.get_url(div, search_engine)
+        if not url:
+            return
+        title = div.xpath(ENGINE[search_engine]['title_xpath'])
+        title = title[0].xpath('string(.)').strip() if title else ""
+        desc = div.xpath(ENGINE[search_engine]['desc_xpath'])
+        desc = desc[0].xpath('string(.)') if desc else ""
+        content.append(
+            {'title': title, 'desc': desc, 'url': url, 'count': count})
+
+    def top_ten(self, search_engine, keyword):
+
+        base_url = ENGINE[search_engine]['base_url'] + keyword
+        res = requests.get(base_url).content
+        content = []
+        selector = etree.HTML(res)
+        divs = selector.xpath(ENGINE[search_engine]['content_xpath'])[:10]
+        count = 0
+        threads = []
+        for div in divs:
+            count += 1
+            threads.append(
+                threading.Thread(target=self.engine_data, args=(div, count, search_engine, content)))
+            threads[-1].start()
+        for i in threads:
+            i.join()
+        content = sorted(content, key=lambda info: info['count'])
+        retobj = {"status": {"msg": 'engine:%s, keyword:%s, good' % (search_engine, keyword),
+                             "code": 1000, "time": time.strftime('%Y-%m-%d %H:%M:%S',
+                                                                 time.localtime())},
+                  "info": {}, "list": content}
+        return retobj
+
+    def get_rank(self, domain, base_url, search_engine, keyword):
+        _LOGGER.info('Using search engine:%s',  search_engine)
+        try:
+            res = requests.get(
+                base_url, headers=headers, cookies=cookies, timeout=5).content
+        except requests.exceptions.ConnectionError as e:
+            _LOGGER.warning("%s %s", base_url, e)
+            raise MyException("%s can not be parsed" % base_url, 10004)
+        selector = etree.HTML(res)
+        if search_engine in 'sogou':
+            total = selector.xpath(
+                ENGINE[search_engine]['rstring'])[0]
+        else:
+            total = re.search(
+                ENGINE[search_engine]['rstring'], res).group(1)
+        total = int(total.replace(',', ''))
+        total = 5 if total > 50 else (
+            (total/10 + 1) if total % 10 > 0 else total/10)
+
+        count = 0
+        divs = []
+        threads = []
+        for i in range(total):
+            if i:
+                if search_engine in 'baidu':
+                    nurl = base_url + '&pn=%d' % (i*10)
+                elif search_engine in '360':
+                    nurl = base_url + "&pn=%d" % (i+1)
+                else:
+                    nurl = base_url + "&page=%d" % (i+1)
+                res = requests.get(
+                    nurl, headers=headers, cookies=cookies, timeout=5).content
+                selector = etree.HTML(res)
+
+            divs += selector.xpath(
+                ENGINE[search_engine]['content_xpath'])
+
+        def check_rank(domain, div, count, search_engine, content):
+            url = div.xpath(ENGINE[search_engine]['url_xpath'])
             if not url:
                 return
             url = url[0]
@@ -313,123 +399,28 @@ class SeoScrapy(object):
                     return
                 if nurl:
                     url = nurl.group(1)
-            if not topten and domain not in url:
-                return
-            title = div.xpath(ENGINE[search_engine]['title_xpath'])
-            title = title[0].xpath('string(.)').strip() if title else ""
-            desc = div.xpath(ENGINE[search_engine]['desc_xpath'])
-            desc = desc[0].xpath('string(.)') if desc else ""
-            content.append(
-                {'title': title, 'desc': desc, 'url': url, 'count': count})
-########################## embeded function finished  ####################
-        _LOGGER.info('Using search engine:%s',  search_engine)
+            if domain in url:
+                content.append(count)
 
-        try:
-            res = requests.get(
-                base_url, headers=headers, cookies=cookies, timeout=5).content
-        except requests.exceptions.ConnectionError as e:
-            _LOGGER.warning("%s %s", base_url, e)
-            raise MyException("%s can not be parsed" % base_url, 10004)
-        first_page = res
-        selector = etree.HTML(res)
-        if search_engine in 'sogou':
-            total = selector.xpath(
-                ENGINE[search_engine]['rstring'])[0]
-        else:
-            total = re.search(
-                ENGINE[search_engine]['rstring'], res).group(1)
-        total = int(total.replace(',', ''))
-        total = 5 if total > 50 else (
-            (total/10 + 1) if total % 10 > 0 else total/10)
-
+        content = []
         count = 0
-        divs = []
-        threads = []
-        result = []
-        for i in range(total):
-            if i:
-                if search_engine in 'baidu':
-                    nurl = base_url + '&pn=%d' % (i*10)
-                elif search_engine in '360':
-                    nurl = base_url + "&pn=%d" % (i+1)
-                else:
-                    nurl = base_url + "&page=%d" % (i+1)
-                res = requests.get(
-                    nurl, headers=headers, cookies=cookies, timeout=5).content
-                selector = etree.HTML(res)
-
-            divs += selector.xpath(
-                ENGINE[search_engine]['content_xpath'])
-
-        for div in divs[:10]:
+        for div in divs:
             count += 1
-            threads.append(
-                threading.Thread(target=checkEngine, args=(domain, div, count, search_engine, False, result)))
+            threads.append(threading.Thread(
+                target=check_rank, args=(domain, div, count, search_engine, content)))
             threads[-1].start()
-
-        for i in threads:
-            i.join()
-
-        result = sorted(result, key=lambda info: info['count'])
-
-        if result:
-            result = result[0]
-        else:
-            result = r.get('%s:::web_info' % domain)
-            if not result:
-                url = r.get(domain)
-                if not url:
-                    url_obj = dealDomain(domain)
-                    if url_obj['code'] != 0:
-                        raise MyException(url_obj['msg'], url_obj['code'])
-                    url = url_obj['url']
-
-                result = {
-                    'title': '', 'desc': '', 'url': url, 'count': ''}
-                try:
-
-                    _web = self.web_info(url)['info']
-                    result = {'title': _web['title'], 'desc': _web['description'],
-                              'url': url, 'count': "50+"}
-                except Exception as e:
-                    _LOGGER.error("Error on keyword_rank get_web:%s" % e)
-            else:
-                result['count'] = "50+"
-
-                ###############################################
-                #     前十
-                ###############################################
-
-        count = 0
-        top_ten_key = '%s:::%s' % (search_engine, keyword)
-        content = r.get(top_ten_key)
-
-        if not content:
-            content = []
-            selector = etree.HTML(first_page)
-            divs = selector.xpath(ENGINE[search_engine]['content_xpath'])[:10]
-            for div in divs:
-                count += 1
-                # threads.append(
-                #     threading.Thread(target=checkEngine, args=(domain, div, count, search_engine, True, content)))
-                # threads[-1].start()
-                checkEngine(domain, div, count, search_engine, True, content)
-
-            for i in threads:
-                i.join()
-            content = sorted(content, key=lambda info: info['count'])
-            r.set(top_ten_key, json.dumps(content))
-        else:
-            content = json.loads(content)
-        return result, content
+        for thread in threads:
+            thread.join()
+        count = sorted(content)[0] if content else '五十名以外'
+        return count
 
     def keyword_rank(self, domain, search_engine, keyword):
 
-        result, content = self.get_by_search_engine(
-            domain, ENGINE[search_engine]['base_url'] + keyword, search_engine, keyword)
+        count = self.get_rank(domain, ENGINE[search_engine]['base_url'] + keyword,
+                              search_engine, keyword)
         retobj = {"status": {"msg": '%s keyword get good' % domain, "code": 1000,
                              "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
-                  "info": result, "list": content}
+                  "info": {'count': count}, "list": []}
         return retobj
 
     def server_info(self, domain):
@@ -634,6 +625,8 @@ def run_forever(req):
     if param_string[1] in 'keyword_rank':
         result = FUNC[param_string[1]](
             param_string[0], param_string[2], param_string[3])
+    elif param_string[0] in 'top_ten':
+        result = FUNC[param_string[0]](param_string[1], param_string[2])
     else:
         result = FUNC[param_string[0]](param_string[1])
     return result
@@ -643,7 +636,7 @@ if __name__ == "__main__":
     FUNC = {'keyword_rank': seo.keyword_rank, 'dead_link': seo.dead_link,
             'web_info': seo.web_info, 'get_alexa': seo.get_alexa,
             'get_include': seo.get_include, 'get_weight': seo.get_weight,
-            'server_info': seo.server_info}
+            'server_info': seo.server_info, 'top_ten': seo.top_ten}
 
     while True:
         req = r.rpop(QUEUE_NAME)
