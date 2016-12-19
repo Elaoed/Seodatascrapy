@@ -27,11 +27,9 @@ def try_except(orig_func):
     @wraps(orig_func)
     def wrapper():
         try:
-            if not request.remote_addr:
-                raise MyException("Client IP doesn't exist", 10021)
             master_token = request.values.get('master_token')
             if not master_token:
-                raise MyException("Token doesn't exist", 10010)
+                raise MyException("Token doesn't exist", 10009)
             # if request.remote_addr not in TOKEN_IP.values():
             #     raise MyException(
             #         '你的ip不允许访问此接口', 10010)
@@ -63,6 +61,22 @@ def try_except(orig_func):
     return wrapper
 
 
+def url_format(origin_func):
+    @wraps(origin_func)
+    def wrapper():
+        domain = request.values.get('domain')
+        if not domain:
+            raise MyException(
+                "%s---domain doesn't exist" % origin_func.__name__, 10002)
+        if not if_url(domain):
+            raise MyException('url format not correct', 10003)
+
+        redis_key = '%s:::%s' % (origin_func.__name__, domain)
+        return origin_func(redis_key)
+
+    return wrapper
+
+
 def query_redis(redis_key):
     result = r.get(redis_key)
     retobj = None
@@ -81,14 +95,14 @@ def query_redis(redis_key):
 
 
 def if_url(url):
-    if re.match('http[s]?://(\w+\.){1,}\w+', url) or re.match('(\w+\.){1,}\w+', url):
+    if re.match('^(http[s]?\:\/\/)?(\w+\.){1,7}\w+$', url):
         return True
     return False
 
 
 @app.route('/getKeywordRank', methods=['POST'])
 @try_except
-def index():
+def keyword_rank():
     url = request.values.get('domain')
     keyword = request.values.get('keyword')
     search_engine = request.values.get('search_engine')
@@ -98,47 +112,57 @@ def index():
         if search_engine not in ['baidu', 'sogou', '360']:
             raise MyException("Search_egine not right", 10006)
 
-        res = re.match('(http[s]?\:\/\/(\w+\.){1,}\w+)', url)
-        if res:
-            url = res.group(1)
-        elif re.match('((\w+\.){1,}\w+)', url):
-            url = re.match('((\w+\.){1,}\w+)', url).group(1)
-        else:
-            raise MyException('Url format not correct', 10003)
+        if not if_url(url):
+            raise MyException('url format not correct', 10003)
 
-        redis_key = 'getKeywordRank-%s-%s-%s' % (
-            url, keyword, search_engine)
+        redis_key = '%s:::keyword_rank:::%s:::%s' % (
+            url, search_engine, keyword)
         return query_redis(redis_key)
 
     else:
-        raise MyException("getKeywordRank--param not right", 10002)
+        raise MyException("keyword_rank--param not right", 10002)
 
 
 @app.route('/getDeadLink', methods=['POST'])
 @try_except
-def index2():
-    domain = request.values.get('domain')
-    if not domain:
-        raise MyException("getDeadLink--domain doesn't exist", 10002)
-    if not if_url(domain):
-        raise MyException('url format not correct', 10003)
-    redis_key = 'getDeadLink-%s' % domain
+@url_format
+def dead_link(redis_key):
     return query_redis(redis_key)
 
 
 @app.route('/getWebInfo', methods=['POST'])
 @try_except
-def index3():
-
-    domain = request.values.get('domain')
-    if not domain:
-        raise MyException("getWebInfo---domain doesn't exist", 10002)
-    if not if_url(domain):
-        raise MyException('url format not correct', 10003)
-
-    redis_key = 'getWebInfo-%s' % domain
+@url_format
+def web_info(redis_key):
     return query_redis(redis_key)
 
 
+@app.route('/getAlexa', methods=['POST'])
+@try_except
+@url_format
+def get_alexa(redis_key):
+    return query_redis(redis_key)
+
+
+@app.route('/getInclude', methods=['POST'])
+@try_except
+@url_format
+def get_include(redis_key):
+    return query_redis(redis_key)
+
+
+@app.route('/getServerInfo', methods=['POST'])
+@try_except
+@url_format
+def server_info(redis_key):
+    return query_redis(redis_key)
+
+
+@app.route('/getWeight', methods=['POST'])
+@try_except
+@url_format
+def get_weight(redis_key):
+    return query_redis(redis_key)
+
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5003)
+    app.run(host='0.0.0.0', port=3035)

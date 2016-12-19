@@ -1,11 +1,13 @@
 # encoding=utf-8
 import re
 import httplib
+import socket
+
 import requests
 import jieba
-import socket
 from lxml import etree
 import sys
+
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
@@ -21,46 +23,56 @@ headers = {
 }
 
 
-def dealDomain(url):
-    if url == "www.163.com":
-        url = "http://www.163.com"
-    if not re.search('^http|^https', url if url else ""):
+def dealDomain(domain):
+    if domain == "www.163.com":
+        domain = "http://www.163.com"
+
+    ret_obj = {'url': domain, 'code': 10004,
+               'msg': "can't parse url:{}".format(domain)}
+    if not re.search('^http|^https', domain if domain else ""):
         try:
-            conn = httplib.HTTPConnection(url, 80, timeout=4)
+            conn = httplib.HTTPConnection(domain, 80, timeout=4)
             conn.request('GET', '/', headers=headers)
             res = conn.getresponse()
             if res.status == 301 or res.status == 302:
-                url = {'url': res.msg['Location'], 'code': 0,
-                       'msg': 'website change url to  %s' % res.msg['Location']}
+                ret_obj['url'] = res.msg['Location']
+                ret_obj['code'] = 0
+                ret_obj['msg'] = 'website change url to{}'.format(
+                    res.msg['Location'])
             elif res.status == 200:
-                url = {'url': 'http://%s' % url, 'code': 0,
-                       'msg': 'return code is 200'}
-            else:
-                url = {'url': url, 'code': 10008,
-                       'msg': "can't parse url:%s, code:%s" % (url, res.status)}
+                ret_obj['url'] = 'http://{}'.format(domain)
+                ret_obj['code'] = 0
+                ret_obj['msg'] = 'return code = 200'
         except socket.gaierror as e:
-            url = {'url': url, 'code': 10004,
-                   'msg': "can't parse url:%s" % url}
+            pass  # default
         except requests.ReadTimeout as e:
-            url = {'url': url, 'code': 10005, 'msg': e}
+            ret_obj['code'] = 10005
+            ret_obj['msg'] = e
         except socket.timeout as e:
-            url = {'url': url, 'code': 10005, 'msg': e}
+            ret_obj['code'] = 10005
+            ret_obj['msg'] = e
         except socket.error as e:
-            url = {'url': url, 'code': 10004,
-                   'msg': "can't parse url:%s" % url}
+            pass  # default
     else:
+        url = domain
         try:
             res = requests.get(url, timeout=5)
             if res and res.status_code == 200:
-                url = {
-                    'url': url, 'code': 0, 'msg': 'url is full format'}
+                ret_obj['code'] = 0
+                ret_obj['msg'] = "url is full format"
             else:
-                url = {'url': url, 'code': 10008,
-                       'msg': "url:%s return code:%d" % (url, res.status_code)}
+                ret_obj['code'] = 10004
+                ret_obj['msg'] = 'url:{}, return code:{}'.format(
+                    url. res.status_code)
         except requests.exceptions.SSLError as e:
-            url = {'url': url, 'code': 10003, 'msg': '%s' % e}
+            ret_obj['code'] = 10003
+            ret_obj['msg'] = e
 
-    return url
+    # if ret_obj['code'] != 0:
+    #     raise MyException('Deal domain url:%s, code:%d, msg:%s'.format(
+    # ret_obj['url'], ret_obj['code'], ret_obj['msg']), ret_obj['code'])
+
+    return ret_obj
 
 
 def divArticle(content):

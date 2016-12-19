@@ -1,35 +1,38 @@
 # encoding=utf-8
-import sys
-reload(sys)
-sys.setdefaultencoding('utf-8')
+from functools import wraps
+import json
+import os
+from os import path
+import Queue
 import re
+import sys
+import time
+import threading
+reload(sys)
+
+from bs4 import BeautifulSoup
+import redis
+import gzip
 from lxml import etree
 import requests
-from bs4 import BeautifulSoup
 try:
     import xml.etree.cElementTree as ET
 except ImportError:
     import xml.etree.ElementTree as ET
-import time
-import os
-from os import path
+
 from kits.config import ROOT_PATH
-import gzip
-import json
-BufSize = 1024*8
-import redis
-from functools import wraps
 from kits.log import get_logger
 from kits.dealDomain import dealDomain, divArticle, deal_encoding
 from kits.MyException import MyException
-import threading
-import Queue
+
+sys.setdefaultencoding('utf-8')
 QUEUE_NAME = 'request_queue'
 webQueue = Queue.Queue()
+BufSize = 1024*8
 
 with open(path.join(ROOT_PATH, 'config/db.conf'), 'r') as f:
     redis_conf = json.load(f)
-r = redis.Redis(
+r = redis.StrictRedis(
     port=redis_conf['redis']['port'], password=redis_conf['redis']['password'])
 
 headers = {
@@ -43,11 +46,6 @@ headers = {
     'Upgrade-Insecure-Requests': '1'
 }
 
-cookies = {'ABTEST': '8|1480486710|v17', 'IPLOC': 'CN3301', 'PHPSESSID': 'okc1fr4p9b8m0rq96723nlk527',
-           'SNUID': '074E299DEFEAAD9043686FF5EF9A4E23', 'SUID': 'E9A1C7732B0B940A00000000583E6F36',
-           'SUIR': '1480486710', 'SUV': '00022B8973C7A1E9583E6F378BBF2990', 'browerV': '3',
-           'ld': 'N@n52lllll2Y5uDTlllllVkMN$6llllltDWPfyllll7lllll4klll5@@@@@@@@@@', 'osV': '2',
-           'pgv_pvi': '6522359808', 'pgv_si': 's2382888960', 'sct': '6', 'sst0': '509', 'taspeed': 'taspeedexist'}
 cookies = {'ABTEST': '8|1480486710|v17', 'IPLOC': 'CN3301',
            'SUV': '00022B8973C7A1E9583E6F378BBF2990', 'pgv_pvi': '6522359808',
            'CXID': 'E956BE05F59EE72F925850993B6EDEE3',
@@ -91,127 +89,42 @@ class SeoScrapy(object):
         self.pro_type = ''
         self.res = ''
         self.include = None
+        self.pre_size = ''
+        self.post_size = ''
+        self.gRate = ''
 
-    def getResponse(self, url):
+    def web_info(self, domain):
+        url = r.get(domain)
+        if not url:
+            url_obj = dealDomain(domain)
+            if url_obj['code'] != 0:
+                raise MyException(url_obj['msg'], url_obj['code'])
+            url = url_obj['url']
+            r.set(domain, url)
 
-        _LOGGER.info(' In getResponse')
+        res = requests.get(url, headers=headers, cookies=cookies, timeout=5)
 
-        self.url = url
-        res = requests.get(url, timeout=5)
-        if res.status_code == 200:
-            self.content = deal_encoding(res.content, res.encoding)
-            self.protocal_type = url.split(':')[0]
-            self.pre_size = ''
-            self.post_size = ''
-            self.gRate = ''
-            if 'Content-Type' in res.headers.keys():
-                self.content_type = res.headers['Content-Type']
-            else:
-                self.content_type = res.headers['content-type']
+        selector = etree.HTML(res.content)
+        desc = selector.xpath('//*[@name="description"]/@content')
+        title = selector.xpath('//title/text()')
+        keywords = selector.xpath('//*[@name="keywords"]/@content')
+        keywords = "" if not keywords else keywords[0]
+        keyword_list = divArticle(res.content)
 
-            if 'Content-Encoding' in res.headers.keys():
-                self.gzip = 'On' if 'gzip' in res.headers[
-                    'Content-Encoding'] else 'Off'
-            elif 'content-encoding' in res.headers.keys():
-                self.gzip = 'On' if 'gzip' in res.headers[
-                    'content-encoding'] else 'Off'
-            else:
-                self.gzip = 'Off'
-            self.res = res
-            selector = etree.HTML(self.content)
-            desc = selector.xpath('//*[@name="description"]/@content')
-            self.desc = desc
-            title = selector.xpath('//title/text()')
-            self.title = title
-            keywords = selector.xpath('//*[@name="keywords"]/@content')
-            keywords = "" if not keywords else keywords[0]
-            keyword_list = divArticle(self.content)
+        for i in divArticle(res.content):
+            keywords += " %s " % i[0].encode()
 
-            for i in divArticle(self.content):
-                keywords += " %s " % i[0].encode()
-            self.keywords = keywords
-
-        else:
-            _LOGGER.warning("%s's status_code is %d", url, res.status_code)
-            raise MyException("%s site can not be access" % url, 10004)
-
-    def getBaiduWeight(self, url):
-        _LOGGER.info('In getBaiduWeight')
-
-        appkey = '618e7a46808573be2401596582de62fb'
-        res = requests.post(
-            'http://op.juhe.cn/baiduWeight/index', data={'key': appkey, 'domain': url}, timeout=5)
-        if res and res.status_code == 200 and res.content:
-            jres = json.loads(res.content)
-            if jres['error_code'] == 0:
-                self.baiduWeight = jres['result']
-            else:
-                _LOGGER.error('res from juhe.cn: reason:%s, error_code:%d',
-                              jres['reason'], jres['error_code'])
-                self.baiduWeight = {
-                    "To": "0",
-                    "From": "0",
-                    "Weight": "0"
-                }
-
-        else:
-            _LOGGER.error("On getBaiduWeight---\
-                res didnt response or status_code:%s", res.status_code)
-            self.baiduWeight = {
-                "To": "0",
-                "From": "0",
-                "Weight": "0"
-            }
-
-    def getWebInfo(self, domain):
-
-        self.domain = domain
-        url = dealDomain(domain)
-        if url['code'] != 0:
-            raise MyException(url['msg'], url['code'])
-        url = url['url']
-
-        self.getResponse(url)
-        t1 = threading.Thread(target=self.getBaiduWeight, args=(domain, ))
-        t1.start()
-        t2 = threading.Thread(target=self.getAllweb)
-        t2.start()
-        t4 = threading.Thread(target=self.getInclude, args=(domain, ))
-        t4.start()
-        t5 = threading.Thread(target=self.getAlexa, args=(url, ))
-        t5.start()
-
-        t1.join()
-        t2.join()
-        t4.join()
-        t5.join()
         webInfo = dict()
-        webInfo['title'] = None if not self.title else self.title[0]
-        if not self.baiduWeight:
-            raise MyException("oops can't get baidu Weight", 10009)
-        else:
-            webInfo['baiduWeight'] = self.baiduWeight
-        webInfo['keywords'] = self.keywords
-        webInfo['description'] = None if not self.desc else self.desc[0]
-        webInfo['pre_size'] = self.pre_size
-        webInfo['post_size'] = self.post_size
-        webInfo['grate'] = self.grate
-        webInfo['contentType'] = self.content_type
-        webInfo['gzip'] = self.gzip
-        webInfo['protocal_type'] = self.protocal_type
-        webInfo['alexa'] = self.alexa if self.alexa else 0
+        webInfo['title'] = None if not title else title[0]
+        webInfo['keywords'] = keywords
+        webInfo['description'] = None if not desc else desc[0]
 
-        if not self.include:
-            raise MyException("ooops can't get include", 10011)
-        else:
-            webInfo['include'] = self.include
-
-        retobj = {"status": {"msg": '%s get WebInfo good' % domain,  "code": 1000, "time": time.strftime(
-            '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": webInfo, "list": []}
-
+        retobj = {"status": {"msg": '%s in web_info good' % domain,  "code": 1000,
+                             "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
+                  "info": webInfo, "list": []}
         return retobj
 
-    def getfriendLinks(self, url):
+    def friend_link(self, url):
 
         res = requests.get(url, headers=headers, timeout=5)
         html = deal_encoding(res.content, res.encoding)
@@ -227,41 +140,34 @@ class SeoScrapy(object):
         blfilter = lambda i, url: True if i in url else False
         if footer:
             for url in footer:
-                if url not in contents and re.match('^http[s]?', url) and  url[-3:] not in ['jpg', 'png', 'pdf'] \
+                if url not in contents and re.match('^http[s]?', url) and  url[-3:] not in ['jpg', 'png', 'pdf', 'exe', 'rar', 'mp3'] \
                         and url.split('/')[2] not in exclude_li:
                     if True not in [blfilter(i, url) for i in black_list]:
                         contents.append(url)
                         exclude_li.append(url.split('/')[2])
 
-        return contents
+        link_queue = Queue.Queue()
+        frilink = {}
+        for link in contents:
+            link_queue.put(link)
+            frilink[link] = -1
 
-    def getAlexa(self, url):
-        _LOGGER.info("In getAlexa")
-        # Element ALEXA is root  openfile has to getroot fromstring dont
-        try:
-            html = requests.get(
-                'http://data.alexa.com/data?cli=10&&url=%s' % url, timeout=8, headers=headers).content
-        except requests.ReadTimeout as e:
-            self.alexa = None
-            return
-        tree = ET.fromstring(html)
-        try:
-            alexa = tree[0][1].attrib['RANK']
-        except IndexError as e:
-            alexa = 0
-        self.alexa = alexa
+        return link_queue, frilink
 
-    def getDeadLink(self, url):
-        url = dealDomain(url)
-        if url['code'] != 0:
-            raise MyException(url['msg'], url['code'])
-        url = url['url']
+    def dead_link(self, domain):
+        url = r.get(domain)
+        if not url:
+            url_obj = dealDomain(domain)
+            if url_obj['code'] != 0:
+                raise MyException(url_obj['msg'], url_obj['code'])
+            url = url_obj['url']
+            r.set(domain, url)
 
-        links = self.getfriendLinks(url)
-        qlinks = Queue.Queue()
-        for i in links:
-            qlinks.put(i)
-        link_status = dict()
+        qlinks, link_status = self.friend_link(url)
+        retobj = {"status": {"msg": 'part of dead link', "code": 10020,
+                             "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
+                  "info": link_status, "list": []}
+        r.set('dead_link:::%s' % domain, retobj)
         threads = []
 
         def testLink():
@@ -270,24 +176,18 @@ class SeoScrapy(object):
                 link = qlinks.get(timeout=5)
             except Queue.Empty:
                 return
-
             try:
-                res = requests.get(link.strip(), timeout=5, headers=headers)
-                if res.status_code in [200, 301, 302]:
+                res = requests.get(
+                    link.strip(), timeout=5, headers=headers, cookies=cookies)
+                if res.status_code == 200:
                     link_status[link] = 0
-            except requests.exceptions.ConnectionError as e:
-                _LOGGER.info('Dead link:%s %s', link, 'url unreachable')
-                link_status[link] = 1
-            except requests.ReadTimeout as e:
-                _LOGGER.info('Dead link:%s %s', link, 'unreachable too')
-                link_status[link] = 1
-            except requests.exceptions.ReadTimeout as e:
-                _LOGGER.info('Dead link:%s %s', link, 'unreachable too')
-                link_status[link] = 1
+                else:
+                    link_status[link] = 1
             except Exception as e:
-                _LOGGER.info('Dead link:%s %s', link, e)
+                _LOGGER.info('test_link %s, reason:%s', link, e)
                 link_status[link] = 1
-        thread_total = 60 if len(links) > 60 else len(links)
+
+        thread_total = 20 if len(link_status) > 30 else len(link_status)
         for i in range(thread_total):
             threads.append(
                 threading.Thread(target=testLink))
@@ -300,12 +200,58 @@ class SeoScrapy(object):
             '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": link_status, "list": []}
         return retobj
 
-    def getInclude(self, url):
+    def get_weight(self, domain):
 
-        if 'http' in url or 'https' in url:
-            url = '.'.join(url.split('/')[2].split('.')[-2:])
+        appkey = '618e7a46808573be2401596582de62fb'
+        baidu_weight = {
+            "To": "0",
+            "From": "0",
+            "Weight": "0"
+        }
+        code = 10010
+        res = requests.post(
+            'http://op.juhe.cn/baiduWeight/index', data={'key': appkey, 'domain': domain}, timeout=5)
+
+        if res and res.status_code == 200 and res.content:
+            jres = json.loads(res.content)
+            if jres['error_code'] == 0:
+                baidu_weight = jres['result']
+                code = 1000
+            else:
+                _LOGGER.error('res from juhe.cn: reason:%s, error_code:%d',
+                              jres['reason'], jres['error_code'])
+        else:
+            _LOGGER.error("baidu weight: %s no response or httpcode:%s",
+                          (domain, res.status_code))
+        retobj = {"status": {"msg": '%s baidu weight good' % domain,  "code": code,
+                             "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
+                  "info": baidu_weight, "list": []}
+        return retobj
+
+    def get_alexa(self, domain):
+        ''' Get alexa rank of domain from http://data.alexa.com/ 
+        '''
+        _LOGGER.info("In getAlexa")
+        alexa = 0
+        code = 10012
+        try:
+            html = requests.get(
+                'http://data.alexa.com/data?cli=10&&url=%s' % domain, timeout=8, headers=headers).content
+            tree = ET.fromstring(html)
+            alexa = tree[0][1].attrib['RANK']
+            code = 1000
+        except IndexError as e:
+            _LOGGER.info('get_alexa, %s %s', domain, e)
+            # code = 0
+        retobj = {"status": {"msg": '%s alexa good' % domain,  "code": code,
+                             "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
+                  "info": {'alexa': alexa}, "list": []}
+        return retobj
+
+    def get_include(self, domain):
+
         html = requests.get(
-            'https://www.baidu.com/s?wd=site:%s' % url, headers=headers, timeout=5).content
+            'https://www.baidu.com/s?wd=site:%s' % domain, headers=headers, timeout=5).content
         res = re.search(
             '找到相关结果数约(.*?)个|该网站共有 (.*?) 个网页被百度收录', html, re.M | re.S)
         if res:
@@ -318,19 +264,23 @@ class SeoScrapy(object):
             baidu = 0
 
         html = requests.get(
-            'https://www.so.com/s?q=site:%s' % url, timeout=5).content
+            'https://www.so.com/s?q=site:%s' % domain, timeout=5).content
         res2 = re.search('找到相关结果约(.*?)个', html)
         _360 = 0 if res2 == None else res2.group(1)
 
         html = requests.get(
-            'https://www.sogou.com/web?query=site:%s' % url, cookies=cookies, timeout=5).content
+            'https://www.sogou.com/web?query=site:%s' % domain, cookies=cookies, timeout=5).content
         selector = etree.HTML(html)
         res3 = selector.xpath('//div[@class="vr-webmsg150521"]/p/em/text()')
         sogou = 0 if not res3 else res3[0]
         include = {'baidu': baidu, '360': _360, 'sogou': sogou, 'google': 0}
-        self.include = include
 
-    def getBySearchEngine(self, domain, base_url, search_engine, keyword):
+        retobj = {"status": {"msg": '%s include good' % domain,  "code": 1000,
+                             "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
+                  "info": {'alexa': include}, "list": []}
+        return retobj
+
+    def get_by_search_engine(self, domain, base_url, search_engine, keyword):
 
         def checkEngine(domain, div, count, search_engine, topten, content):
             url = div.xpath(
@@ -371,7 +321,8 @@ class SeoScrapy(object):
             res = requests.get(
                 base_url, headers=headers, cookies=cookies, timeout=5).content
         except requests.exceptions.ConnectionError as e:
-            raise MyException("%s can not be parsed" % search_engine, 10004)
+            _LOGGER.warning("%s %s", base_url, e)
+            raise MyException("%s can not be parsed" % base_url, 10004)
         first_page = res
         selector = etree.HTML(res)
         if search_engine in 'sogou':
@@ -413,29 +364,33 @@ class SeoScrapy(object):
             i.join()
 
         result = sorted(result, key=lambda info: info['count'])
+
         if result:
             result = result[0]
-
         else:
-            url = dealDomain(domain)
-            if url['code'] == 0:
-                try:
-                    self.getResponse(url['url'])
-                    result = {'title': self.title[0] if self.title else "",
-                              'desc': self.desc[0] if self.desc else "",
-                              'url': url['url'], 'count': "50+"}
-                except Exception as e:
-                    _LOGGER.info(e)
-                    result = {
-                        'title': '', 'desc': '', 'url': url['url'], 'count': ''}
+            result = r.get('%s:::web_info' % domain)
+            if not result:
+                url = r.get(domain)
+                if not url:
+                    url_obj = dealDomain(domain)
+                    if url_obj['code'] != 0:
+                        raise MyException(url_obj['msg'], url_obj['code'])
+                    url = url_obj['url']
 
-            else:
                 result = {
-                    'title': '', 'desc': '', 'url': url['url'], 'count': ''}
+                    'title': '', 'desc': '', 'url': url, 'count': ''}
+                try:
+                    _web = self.web_info(url)['info']
+                    result = {'title': _web.title[0], 'desc': _web.desc[0],
+                              'url': url, 'count': "50+"}
+                except Exception as e:
+                    _LOGGER.error("Error on keyword_rank get_web:%s" % e)
+            else:
+                result['count'] = "50+"
 
-        ###############################################
-        #     前十
-        ###############################################
+                ###############################################
+                #     前十
+                ###############################################
 
         count = 0
         top_ten_key = '%s:::%s' % (search_engine, keyword)
@@ -447,9 +402,10 @@ class SeoScrapy(object):
             divs = selector.xpath(ENGINE[search_engine]['content_xpath'])[:10]
             for div in divs:
                 count += 1
-                threads.append(
-                    threading.Thread(target=checkEngine, args=(domain, div, count, search_engine, True, content)))
-                threads[-1].start()
+                # threads.append(
+                #     threading.Thread(target=checkEngine, args=(domain, div, count, search_engine, True, content)))
+                # threads[-1].start()
+                checkEngine(domain, div, count, search_engine, True, content)
 
             for i in threads:
                 i.join()
@@ -459,18 +415,61 @@ class SeoScrapy(object):
             content = json.loads(content)
         return result, content
 
-    def getKeywordRank(self, domain, keyword, search_engine):
+    def keyword_rank(self, domain, search_engine, keyword):
 
-        result, content = self.getBySearchEngine(
+        result, content = self.get_by_search_engine(
             domain, ENGINE[search_engine]['base_url'] + keyword, search_engine, keyword)
-        retobj = {"status": {"msg": '%s keyword get good' % domain, "code": 1000, "time": time.strftime(
-            '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": result, "list": content}
+        retobj = {"status": {"msg": '%s keyword get good' % domain, "code": 1000,
+                             "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
+                  "info": result, "list": content}
         return retobj
 
-    def getAllweb(self):
+    def server_info(self, domain):
+        url = r.get(domain)
+        if not url:
+            url_obj = dealDomain(domain)
+            if url_obj['code'] != 0:
+                _LOGGER.error(
+                    '%s code:%s', url_obj['msg'], url_obj['code'])
+                raise MyException(url_obj['msg'], url_obj['code'])
+            url = url_obj['url']
+            r.set(domain, url)
+        res = requests.get(
+            url, timeout=5, headers=headers, cookies=cookies)
+        if res.status_code is not 200:
+            _LOGGER.warning(
+                "%s's return httpcode is %d", url, res.status_code)
+            raise MyException("%s server_info" % url, 10004)
+
+        content = deal_encoding(res.content, res.encoding)
+        protocal_type = url.split(':')[0]
+        if 'Content-Type' in res.headers.keys():
+            content_type = res.headers['Content-Type']
+        else:
+            content_type = res.headers['content-type']
+
+        if 'Content-Encoding' in res.headers.keys():
+            gzip = 'On' if 'gzip' in res.headers[
+                'Content-Encoding'] else 'Off'
+        elif 'content-encoding' in res.headers.keys():
+            gzip = 'On' if 'gzip' in res.headers[
+                'content-encoding'] else 'Off'
+        else:
+            gzip = 'Off'
+        pre_size, post_size, grate = self.get_web_source(content, url)
+
+        server_info = {}
+        server_info['pre_size'] = pre_size
+        server_info['post_size'] = post_size
+        server_info['grate'] = grate
+        server_info['contentType'] = content_type
+        server_info['gzip'] = gzip
+        server_info['protocal_type'] = protocal_type
+
+    def get_web_source(self, content, url):
         _LOGGER.info('In getAllweb')
 
-        soup = BeautifulSoup(self.content, 'lxml')
+        soup = BeautifulSoup(content, 'lxml')
         jss = soup.find_all('script')
         css = soup.find_all('link')
         imgs = soup.find_all('img')
@@ -483,16 +482,16 @@ class SeoScrapy(object):
             if re.match('//', link):
                 useful_links.append('http:' + link)
             elif re.match('/', link):
-                useful_links.append(self.url + link)
+                useful_links.append(url + link)
             elif re.match('http', link) or re.match('https', link):
                 useful_links.append(link)
             else:
                 continue
 
         dirpath = os.path.dirname(os.path.realpath(__file__))
-        before_filepath = os.path.join(dirpath, 'files/%s_files' % self.domain)
+        before_filepath = os.path.join(dirpath, 'files/%s_files' % url)
         gzip_filepath = os.path.join(
-            dirpath, 'files/%s_gzipfiles' % self.domain)
+            dirpath, 'files/%s_gzipfiles' % url)
         if not os.path.exists(before_filepath):
             os.makedirs(before_filepath)
 
@@ -518,29 +517,30 @@ class SeoScrapy(object):
             i.join()
 
         with open(os.path.join(before_filepath, 'index.html'), 'wb') as f:
-            f.write(self.content)
-        pre_size = (int(self.getsize(before_filepath))/1000)
-        self.pre_size = '%dk' % pre_size
-        post_size = (int(self.gzipfile(before_filepath, gzip_filepath))/1000)
-        self.post_size = '%dk' % post_size
+            f.write(content)
 
-        self.delFiles(before_filepath)
-        self.delFiles(gzip_filepath)
+        pre_size = self.get_size(before_filepath)/1000
+        post_size = self.gzip_file(before_filepath, gzip_filepath)/1000
+
+        self.del_Files(before_filepath)
+        self.del_Files(gzip_filepath)
 
         try:
-            self.grate = str(
+            grate = str(
                 (pre_size - post_size)*100/pre_size) + '%'
         except ZeroDivisionError as zerror:
-            self.grate = '0%'
+            grate = '0%'
 
-    def getsize(self, dirpath):
+        return '%dk' % pre_size, '%dk' % post_size, grate
+
+    def get_size(self, dirpath):
         size = 0
         for root, dirs, files in os.walk(dirpath):
             size += sum(os.path.getsize(os.path.join(root, name))
                         for name in files)
         return size
 
-    def delFiles(self, dirpath):
+    def del_Files(self, dirpath):
         for root, dirs, files in os.walk(dirpath):
             for name in files:
                 try:
@@ -550,7 +550,7 @@ class SeoScrapy(object):
                 except OSError:
                     continue
 
-    def gzipfile(self, before_filepath, gzip_filepath):
+    def gzip_file(self, before_filepath, gzip_filepath):
         if not os.path.exists(gzip_filepath):
             os.makedirs(gzip_filepath)
         for root, dirs, files in os.walk(before_filepath):
@@ -558,7 +558,7 @@ class SeoScrapy(object):
                 f = gzip.open(os.path.join(gzip_filepath, file), 'wb')
                 f.write(open(os.path.join(before_filepath, file)).read())
                 f.close()
-        return self.getsize(gzip_filepath)
+        return self.get_size(gzip_filepath)
 
 
 def try_except(orig_func):
@@ -583,7 +583,7 @@ def try_except(orig_func):
             retobj = {"status": {"msg": 'Connection Error', "code": 10005, "time": time.strftime(
                 '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []}
         except MyException as e:
-            _LOGGER.error(e.msg)
+            _LOGGER.error(e.msg, e.code)
             retobj = {"status": {"msg": str(e.msg), "code": e.code,
                                  "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
                       "info": {}, "list": []}
@@ -601,24 +601,38 @@ def try_except(orig_func):
 
 @try_except
 def run_forever(req):
+    '''
+        put domain:url to redis                 domain:::url        -> json        remark: TODO
+        1.getWebInfo --> get_include(domain)    domain:::include    -> json
+                     --> get_alexa(domain)      domain:::alexa      -> json
+                     --> get_server_info(domain)domain:::server_info-> json
+                     --> get_web_info(url)      domain:::web_info   -> json
+                     --> get_weight(domain)     domain:::weight     -> json
+
+        2.dead_link(url)                        domain:::dead_link  -> json
+
+        3.keyword_rank(url, keyword)            domain:::keyword_rank:::search_engine:::keyword   -> json       
+                                                search_engine:::keyword -> json
+
+    '''
 
     _LOGGER.info("Deal %s", req)
-    param_string = req.split('-')
+    param_string = req.split(':::')
     result = ""
-    if param_string[0] in 'getKeywordRank':
-        result = FUNC[param_string[0]](
-            param_string[1], param_string[2], param_string[3])
-    elif param_string[0] in 'getWebInfo':
-        result = FUNC[param_string[0]](param_string[1])
+
+    if param_string[1] in 'keyword_rank':
+        result = FUNC[param_string[1]](
+            param_string[0], param_string[2], param_string[3])
     else:
         result = FUNC[param_string[0]](param_string[1])
-
     return result
 
 if __name__ == "__main__":
     seo = SeoScrapy()
-    FUNC = {'getKeywordRank': seo.getKeywordRank,
-            'getDeadLink': seo.getDeadLink, 'getWebInfo': seo.getWebInfo}
+    FUNC = {'keyword_rank': seo.keyword_rank, 'dead_link': seo.dead_link,
+            'web_info': seo.web_info, 'get_alexa': seo.get_alexa,
+            'get_include': seo.get_include, 'get_weight': seo.get_weight,
+            'server_info': seo.server_info}
 
     while True:
         req = r.rpop(QUEUE_NAME)
@@ -627,4 +641,4 @@ if __name__ == "__main__":
             continue
         task = threading.Thread(target=run_forever, args=(req, ))
         task.start()
-        time.sleep(0.3)
+        time.sleep(0.1)
