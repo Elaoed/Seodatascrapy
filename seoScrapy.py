@@ -140,8 +140,7 @@ class SeoScrapy(object):
         blfilter = lambda i, url: True if i in url else False
         if footer:
             for url in footer:
-                if url not in contents and re.match('^http[s]?', url) and  url[-3:] not in ['jpg', 'png', 'pdf', 'exe', 'rar', 'mp3'] \
-                        and url.split('/')[2] not in exclude_li:
+                if url not in contents and re.match('^http[s]?', url) and url[-3:] not in ['jpg', 'png', 'pdf', 'exe', 'rar', 'mp3'] and url.split('/')[2] not in exclude_li:
                     if True not in [blfilter(i, url) for i in black_list]:
                         contents.append(url)
                         exclude_li.append(url.split('/')[2])
@@ -349,8 +348,11 @@ class SeoScrapy(object):
             raise MyException("%s can not be parsed" % base_url, 10004)
         selector = etree.HTML(res)
         if search_engine in 'sogou':
-            total = selector.xpath(
-                ENGINE[search_engine]['rstring'])[0]
+            try:
+                total = selector.xpath(ENGINE[search_engine]['rstring'])[0]
+            except IndexError as e:
+                _LOGGER.error('IndexError scrapy Sogou too fast')
+                raise MyException('IndexError scrapy Sogou too fast', 10005)
         else:
             total = re.search(
                 ENGINE[search_engine]['rstring'], res).group(1)

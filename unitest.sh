@@ -1,11 +1,13 @@
 #!/bin/bash
 
 url_list=("newdun.com" "aaa.com" "bykikio.com" "027hpit.com" "lem8.com" '027kegongchang.com' 'hnfvc.com' "cnblogs.com" "ipc.me" "sina.com" "163.com" "pubu.io" "yiqixie.com" "1ting.com" "wo99.net" "kktv1.com")
-
+# 16 in total
 INTERFACE=("getAlexa" "getWeight" "getDeadLink" "getServerInfo" "getWebInfo" "getInclude")
-# INTERFACE=("getTopten")
+INTERFACE=("getInclude")
 master_token='NuFOOb2OokoO2YrI6DkNHqWjBXUhvZdV'
 
+
+echo "Starting..................."
 
 function test_random(){
 	call=${INTERFACE[$[RANDOM % ${#INTERFACE[@]}]]}
@@ -15,6 +17,12 @@ function test_random(){
 	echo
 	echo "================================================="
 }
+
+# for i in `seq 10`
+# do
+# 	test_random
+# done
+
 function test_order(){
 	for url in ${url_list[@]}
 	do
@@ -25,28 +33,8 @@ function test_order(){
 		echo "================================================="
 	done
 }
-# function test_link(){
 
-# 	echo "Testing getDeadLink..........."
-# 	for url in ${url_list[@]}
-# 		do
-# 		curl -X POST -# -d "domain=${url}&master_token=${master_token}" localhost:3035/getDeadLink
-# 		echo  
-# 		echo "================================================="
-# 	done
-# }
-
-# function test_web(){
-# 	echo "Testing getWebInfo..........."
-# 	for url in ${url_list[@]}
-# 	do
-# 		curl -X POST -# -d "domain=${url}&master_token=${master_token}" localhost:3035/getWebInfo
-# 		echo
-# 		echo "================================================="
-# 	done
-
-# }
-
+# test_order
 
 
 RANENGINE=('baidu' 'sogou' '360')
@@ -57,24 +45,18 @@ function test_key_word(){
 	do
 		engine=${RANENGINE[$[$RANDOM % ${#RANENGINE[@]}]]}
 		keyword=${KEYWORDS[$[$RANDOM % ${#KEYWORDS[@]}]]}
-		curl -X POST -d "domain=${url}&search_engine=${engine}&keyword=${keyword}&master_token=${master_token}" localhost:3035/getKeywordRank
+		curl -X POST -d "domain=${url}&search_engine=${engine}&keyword=${keyword}&master_token=${master_token}" localhost:3035/getTopten
 		echo
 		echo "==================================================="
 	done		
 }
-echo "Starting..................."
 
-curl -X POST -d "domain=cnblogs.com&master_token=${master_token}&search_engine=baidu&keyword=博客园" localhost:3035/getKeywordRank
-# for i in `seq 10`
-# do
-# 	test_random
-# done
-# test_order
+
+test_key_word
+
 # curl -X POST -d "domain=newdun.com&master_token=${master_token}" localhost:5003/getWebInfo
 # echo
-# test_web	
-# test_link
-# test_key_word
+
 # url='newdun.com'
 # ==================================================
 # 		raise error process/flow
