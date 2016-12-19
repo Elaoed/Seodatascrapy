@@ -1,10 +1,9 @@
 #!/bin/bash
 
 url_list=("newdun.com" "aaa.com" "bykikio.com" "027hpit.com" "lem8.com" '027kegongchang.com' 'hnfvc.com' "cnblogs.com" "ipc.me" "sina.com" "163.com" "pubu.io" "yiqixie.com" "1ting.com" "wo99.net" "kktv1.com")
-# url_list=('yiqixie.com')
 
-INTERFACE=("getAlexa" "getWeight" "getDeadLink" "getWebInfo" "getInclude" "getServerInfo")
-# INTERFACE=("getWebInfo")
+INTERFACE=("getAlexa" "getWeight" "getDeadLink" "getServerInfo" "getWebInfo" "getInclude")
+INTERFACE=("getInclude")
 master_token='NuFOOb2OokoO2YrI6DkNHqWjBXUhvZdV'
 
 
@@ -66,16 +65,16 @@ function test_key_word(){
 echo "Starting..................."
 
 # curl -X POST -d "domain=abc.com&master_token=${master_token}&search_engine=sogou&keyword=关键字" 192.168.199.21:3035/getKeywordRank
-# for i in `seq 10`
-# do
-# 	test_random
-# done
+for i in `seq 10`
+do
+	test_random
+done
 # test_order
 # curl -X POST -d "domain=newdun.com&master_token=${master_token}" localhost:5003/getWebInfo
 # echo
 # test_web	
 # test_link
-test_key_word
+# test_key_word
 # url='newdun.com'
 # ==================================================
 # 		raise error process/flow

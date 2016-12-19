@@ -10,12 +10,28 @@ param = {
 	url:'newdun.com'
 }
 
-/getFriendLink
+
+/getDeadLink
 param = {
 	url:'newdun.com'
 }
 
-/getDeadLink
+/getAlexa
+param = {
+	url:'newdun.com'
+}
+
+/getInclude
+param = {
+	url:'newdun.com'
+}
+
+/getServerInfo
+param = {
+	url:'newdun.com'
+}
+
+/getServerInfo
 param = {
 	url:'newdun.com'
 }
@@ -32,7 +48,7 @@ result = {
 
 	10006 => ['error_col' => '', 'msg' => '搜索引擎不存在']
 	10008 => ['error_col' => '', 'msg' => '目标网页状态不正常']
-	10009 => ['error_col' => '', 'msg' => '无权访问接口']
+	10010 => ['error_col' => '', 'msg' => '无权访问接口']
 
 	10010 => ['error_col' => '', 'msg' => '获取百度权重出错']
 	10011 => ['error_col' => '', 'msg' => '获取收录数量时出错']

@@ -29,14 +29,14 @@ def try_except(orig_func):
         try:
             master_token = request.values.get('master_token')
             if not master_token:
-                raise MyException("Token doesn't exist", 10009)
+                raise MyException("Token doesn't exist", 10010)
 
             if request.remote_addr not in TOKEN_IP.keys():
                 raise MyException(
-                    '你的ip不允许访问此接口', 10010)
+                    'your Ip is not allow to acess this interface', 10010)
             if TOKEN_IP[request.remote_addr] not in master_token:
                 raise MyException(
-                    '你的ip对应的token错误', 10010)
+                    'the token of corresponding ip is wrong', 10010)
             return orig_func()
         except requests.exceptions.SSLError as e:
             LOGGER.info('%s' % e)
@@ -87,7 +87,7 @@ def query_redis(redis_key):
         r.set(redis_key, retobj)
         r.expire(redis_key, 60)
         r.lpush(QUEUE_NAME, redis_key)
-    elif json.loads(result)['status']['code'] in [10008, 10011, 10009, 10005]:
+    elif json.loads(result)['status']['code'] in [10008, 10011, 10005]:
         r.lpush(QUEUE_NAME, redis_key)
         retobj = result
     else:

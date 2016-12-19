@@ -249,35 +249,42 @@ class SeoScrapy(object):
         return retobj
 
     def get_include(self, domain):
-
-        html = requests.get(
-            'https://www.baidu.com/s?wd=site:%s' % domain, headers=headers, timeout=5).content
-        res = re.search(
-            '找到相关结果数约(.*?)个|该网站共有 (.*?) 个网页被百度收录', html, re.M | re.S)
-        if res:
-            if res.group(1):
-                baidu = res.group(1)
+        try:
+            html = requests.get(
+                'https://www.baidu.com/s?wd=site:%s' % domain, headers=headers, timeout=5).content
+            res = re.search(
+                '找到相关结果数约(.*?)个|该网站共有 (.*?) 个网页被百度收录', html, re.M | re.S)
+            if res:
+                if res.group(1):
+                    baidu = res.group(1)
+                else:
+                    baidu = re.search('>(.*?)<', res.group(2))
+                    baidu = baidu.group(1)
             else:
-                baidu = re.search('>(.*?)<', res.group(2))
-                baidu = baidu.group(1)
-        else:
-            baidu = 0
+                baidu = 0
 
-        html = requests.get(
-            'https://www.so.com/s?q=site:%s' % domain, timeout=5).content
-        res2 = re.search('找到相关结果约(.*?)个', html)
-        _360 = 0 if res2 == None else res2.group(1)
+            html = requests.get(
+                'https://www.so.com/s?q=site:%s' % domain, timeout=5).content
+            res2 = re.search('找到相关结果约(.*?)个', html)
+            _360 = 0 if res2 == None else res2.group(1)
 
-        html = requests.get(
-            'https://www.sogou.com/web?query=site:%s' % domain, cookies=cookies, timeout=5).content
-        selector = etree.HTML(html)
-        res3 = selector.xpath('//div[@class="vr-webmsg150521"]/p/em/text()')
-        sogou = 0 if not res3 else res3[0]
-        include = {'baidu': baidu, '360': _360, 'sogou': sogou, 'google': 0}
+            html = requests.get(
+                'https://www.sogou.com/web?query=site:%s' % domain, cookies=cookies, timeout=5).content
+            selector = etree.HTML(html)
+            res3 = selector.xpath(
+                '//div[@class="vr-webmsg150521"]/p/em/text()')
+            sogou = 0 if not res3 else res3[0]
+            include = {
+                'baidu': baidu, '360': _360, 'sogou': sogou, 'google': 0}
 
-        retobj = {"status": {"msg": '%s include good' % domain,  "code": 1000,
-                             "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
-                  "info": {'alexa': include}, "list": []}
+            retobj = {"status": {"msg": '%s include good' % domain,  "code": 1000,
+                                 "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
+                      "info": include, "list": []}
+        except Exception as e:
+            _LOGGER.ERROR('ERROR in get include, %s', e)
+            retobj = {"status": {"msg": '%s include error' % domain,  "code": 10011,
+                                 "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
+                      "info": include, "list": []}
         return retobj
 
     def get_by_search_engine(self, domain, base_url, search_engine, keyword):
@@ -441,7 +448,6 @@ class SeoScrapy(object):
             _LOGGER.warning(
                 "%s's return httpcode is %d", url, res.status_code)
             raise MyException("%s server_info" % url, 10004)
-
         content = deal_encoding(res.content, res.encoding)
         protocal_type = url.split(':')[0]
         if 'Content-Type' in res.headers.keys():
@@ -466,6 +472,10 @@ class SeoScrapy(object):
         server_info['contentType'] = content_type
         server_info['gzip'] = gzip
         server_info['protocal_type'] = protocal_type
+        retobj = {"status": {"msg": '%s server info get good' % domain, "code": 1000,
+                             "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
+                  "info": server_info, "list": []}
+        return retobj
 
     def get_web_source(self, content, url):
         _LOGGER.info('In getAllweb')
