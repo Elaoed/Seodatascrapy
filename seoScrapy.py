@@ -380,8 +380,9 @@ class SeoScrapy(object):
                 result = {
                     'title': '', 'desc': '', 'url': url, 'count': ''}
                 try:
+
                     _web = self.web_info(url)['info']
-                    result = {'title': _web.title[0], 'desc': _web.desc[0],
+                    result = {'title': _web['title'], 'desc': _web['description'],
                               'url': url, 'count': "50+"}
                 except Exception as e:
                     _LOGGER.error("Error on keyword_rank get_web:%s" % e)
@@ -583,7 +584,7 @@ def try_except(orig_func):
             retobj = {"status": {"msg": 'Connection Error', "code": 10005, "time": time.strftime(
                 '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []}
         except MyException as e:
-            _LOGGER.error(e.msg, e.code)
+            _LOGGER.error("%s, code:%d", e.msg, e.code)
             retobj = {"status": {"msg": str(e.msg), "code": e.code,
                                  "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
                       "info": {}, "list": []}

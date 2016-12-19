@@ -30,12 +30,13 @@ def try_except(orig_func):
             master_token = request.values.get('master_token')
             if not master_token:
                 raise MyException("Token doesn't exist", 10009)
-            # if request.remote_addr not in TOKEN_IP.values():
-            #     raise MyException(
-            #         '你的ip不允许访问此接口', 10010)
-            # if TOKEN_IP[request.remote_addr] not in master_token:
-            #     raise MyException(
-            #         '你的ip对应的token错误', 10010)
+
+            if request.remote_addr not in TOKEN_IP.keys():
+                raise MyException(
+                    '你的ip不允许访问此接口', 10010)
+            if TOKEN_IP[request.remote_addr] not in master_token:
+                raise MyException(
+                    '你的ip对应的token错误', 10010)
             return orig_func()
         except requests.exceptions.SSLError as e:
             LOGGER.info('%s' % e)
