@@ -1,0 +1,13 @@
+domain一共16个
+
+getAlexa 		17s 
+getWeight 		2.3s
+getDeadLink		38s
+getServerInfo 	41s
+getWebInfo		7s
+getInclude		3.8s
+getKeywordRank	16s (中间因为搜狗的的原因时间不太准确)
+getTopten		7s ======== 10个请求  只有这个接口跟domain没有关系
+
+这是在线程全部开放的情况下的测试数据  以后估计还要限制最大线程数
+

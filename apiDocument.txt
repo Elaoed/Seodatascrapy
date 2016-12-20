@@ -1,0 +1,12 @@
+获取目标域名对应网站的信息 (标题, 描述, 关键字)
+接口地址 192.168.199.21:3035/getWebInfo
+
+必要参数
+Parameter name 			Type		Description
+================================================================================
+master_token 			String		access_token
+domain					String		domain direct to website
+********************************************************************************
+
+返回示例
+curl -X POST 192.168.199.21:3035/getWebInfo -d 'master_token=${master_token}&domain=${domain}'

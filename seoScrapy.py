@@ -59,7 +59,7 @@ cookies = {'ABTEST': '8|1480486710|v17', 'IPLOC': 'CN3301',
 _LOGGER = get_logger("seoScrapy")
 
 ENGINE = {
-    'baidu': {'base_url': 'https://www.baidu.com/s?wd=',
+    'baidu': {'base_url': 'http://www.baidu.com/s?wd=',
               'rstring': '百度为您找到相关结果约(.*?)个',
               'content_xpath': '//div[contains(@class, "c-container")]',
               'title_xpath': './descendant::h3[contains(@class,"t")]/a[@target="_blank"]',
