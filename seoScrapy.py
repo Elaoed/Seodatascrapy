@@ -413,7 +413,7 @@ class SeoScrapy(object):
             threads[-1].start()
         for thread in threads:
             thread.join()
-        count = sorted(content)[0] if content else '五十名以外'
+        count = sorted(content)[0] if content else '50+'
         return count
 
     def keyword_rank(self, domain, search_engine, keyword):
