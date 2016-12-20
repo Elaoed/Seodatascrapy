@@ -7,12 +7,12 @@ import Queue
 import re
 import sys
 import time
+import gzip
 import threading
 reload(sys)
 
 from bs4 import BeautifulSoup
 import redis
-import gzip
 from lxml import etree
 import requests
 try:
@@ -109,7 +109,7 @@ class SeoScrapy(object):
         title = selector.xpath('//title/text()')
         keywords = selector.xpath('//*[@name="keywords"]/@content')
         keywords = "" if not keywords else keywords[0]
-        keyword_list = divArticle(res.content)
+        # keyword_list = divArticle(res.content)
 
         for i in divArticle(res.content):
             keywords += " %s " % i[0].encode()
@@ -166,25 +166,26 @@ class SeoScrapy(object):
         retobj = {"status": {"msg": 'part of dead link', "code": 10020,
                              "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
                   "info": link_status, "list": []}
-        r.set('dead_link:::%s' % domain, retobj)
+        r.set('dead_link:::%s' % domain, json.dumps(retobj))
         threads = []
 
         def testLink():
 
-            try:
-                link = qlinks.get(timeout=5)
-            except Queue.Empty:
-                return
-            try:
-                res = requests.get(
-                    link.strip(), timeout=5, headers=headers, cookies=cookies)
-                if res.status_code == 200:
-                    link_status[link] = 0
-                else:
+            while True:
+                try:
+                    link = qlinks.get(timeout=5)
+                except Queue.Empty:
+                    return
+                try:
+                    res = requests.get(
+                        link.strip(), timeout=5, headers=headers, cookies=cookies)
+                    if res.status_code == 200:
+                        link_status[link] = 0
+                    else:
+                        link_status[link] = 1
+                except Exception as e:
+                    _LOGGER.info('test_link %s, reason:%s', link, e)
                     link_status[link] = 1
-            except Exception as e:
-                _LOGGER.info('test_link %s, reason:%s', link, e)
-                link_status[link] = 1
 
         thread_total = 20 if len(link_status) > 30 else len(link_status)
         for i in range(thread_total):
@@ -293,45 +294,61 @@ class SeoScrapy(object):
         url = url[0]
         try:
             if search_engine in 'baidu':
-                nurl = requests.get(url, timeout=5).url
+                _LOGGER.debug("before request to %s", url)
+                res = requests.get(url, timeout=4, headers=headers, cookies=cookies)
+                _LOGGER.debug("hey middle")
+                nurl = res.url
+                _LOGGER.debug("finish request to %s", url)
             else:
                 nurl = re.search(
-                    "URL='(.*?)'", requests.get(url, timeout=5).content)
+                    "URL='(.*?)'", requests.get(url, timeout=2, headers=headers, cookies=cookies).content)
                 nurl = nurl.group(1) if nurl else None
             return nurl
         except requests.ReadTimeout as e:
+            _LOGGER.debug("timeout request to %s", url)
             return None
         except Exception as e:
             return None
 
     def engine_data(self, div, count, search_engine, content):
+        _LOGGER.debug('%d before get url', count)
         url = self.get_url(div, search_engine)
+        _LOGGER.debug('%d after get url', count)
         if not url:
             return
         title = div.xpath(ENGINE[search_engine]['title_xpath'])
         title = title[0].xpath('string(.)').strip() if title else ""
         desc = div.xpath(ENGINE[search_engine]['desc_xpath'])
         desc = desc[0].xpath('string(.)') if desc else ""
+
         content.append(
             {'title': title, 'desc': desc, 'url': url, 'count': count})
+        _LOGGER.debug('%d finish append', count)
 
     def top_ten(self, search_engine, keyword):
+        u'''Get top ten '''
 
+        _LOGGER.debug("start")
         base_url = ENGINE[search_engine]['base_url'] + keyword
         res = requests.get(base_url).content
+        _LOGGER.debug("get first page content")
         content = []
         selector = etree.HTML(res)
         divs = selector.xpath(ENGINE[search_engine]['content_xpath'])[:10]
+        _LOGGER.debug("get divs") 
         count = 0
         threads = []
         for div in divs:
             count += 1
             threads.append(
-                threading.Thread(target=self.engine_data, args=(div, count, search_engine, content)))
+                threading.Thread(target=self.engine_data, args=(div, count, search_engine, content))
+            )
             threads[-1].start()
         for i in threads:
             i.join()
+        _LOGGER.debug("finish xpath from div")
         content = sorted(content, key=lambda info: info['count'])
+        _LOGGER.debug("sorted")
         retobj = {"status": {"msg": 'engine:%s, keyword:%s, good' % (search_engine, keyword),
                              "code": 1000, "time": time.strftime('%Y-%m-%d %H:%M:%S',
                                                                  time.localtime())},
@@ -597,9 +614,11 @@ def try_except(orig_func):
                                  "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
                       "info": {}, "list": []}
         finally:
+            _LOGGER.info('%s ==============', req)
             r.set(req, json.dumps(retobj))
             r.expire(req, 43200)
-            _LOGGER.info('%s ==============', req)
+            _LOGGER.info('%s **************', req)
+            
     return wrapper
 
 

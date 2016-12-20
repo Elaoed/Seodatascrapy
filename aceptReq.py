@@ -9,7 +9,6 @@ import redis
 import requests
 from flask import Flask, request
 from kits.config import ROOT_PATH
-from kits.dealDomain import dealDomain
 from kits.log import get_logger
 from kits.MyException import MyException
 
