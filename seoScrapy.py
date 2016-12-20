@@ -162,7 +162,7 @@ class SeoScrapy(object):
             url = url_obj['url']
             r.set(domain, url)
 
-        qlinks, link_status = self.friend_link(url)
+        qlinks, link_status = self.friend_link(domain)
         retobj = {"status": {"msg": 'part of dead link', "code": 10020,
                              "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
                   "info": link_status, "list": []}
@@ -240,10 +240,13 @@ class SeoScrapy(object):
             tree = ET.fromstring(html)
             alexa = tree[0][1].attrib['RANK']
             code = 1000
-        except IndexError as e:
-            _LOGGER.info('get_alexa, %s %s', domain, e)
-            # code = 0
-        retobj = {"status": {"msg": '%s alexa good' % domain,  "code": code,
+        except IndexError as err:
+            _LOGGER.info('get_alexa, %s %s', domain, err)
+            code = 1000
+        except Exception as err:
+            _LOGGER.info('get_alexa, %s %s', domain, err)
+
+        retobj = {"status": {"msg": '%s alexa good' % domain, "code": code,
                              "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
                   "info": {'alexa': alexa}, "list": []}
         return retobj
