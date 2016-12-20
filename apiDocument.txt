@@ -1,4 +1,9 @@
-获取目标域名对应网站的信息 (标题, 描述, 关键字)
+master_token='NuFOOb2OokoO2YrI6DkNHqWjBXUhvZdV'
+domain='newdun.com'
+keyword='牛盾'
+search_engine='baidu'
+
+1.获取目标域名对应网站的信息 (标题, 描述, 关键字)
 接口地址 192.168.199.21:3035/getWebInfo
 
 必要参数
@@ -9,4 +14,252 @@ domain					String		domain direct to website
 ********************************************************************************
 
 返回示例
-curl -X POST 192.168.199.21:3035/getWebInfo -d 'master_token=${master_token}&domain=${domain}'
+curl -X POST 192.168.199.21:3035/getWebInfo -d "master_token=${master_token}&domain=${domain}"
+
+返回参考
+{
+	"status": {
+		"msg": "newdun.com in web_info good", 
+		"code": 1000, 
+		"time": "2016-12-20 11:03:55"
+	}, 
+	"info": {
+		"keywords": " \u670d\u52a1  \u89e3\u6790  Newdun  \u6280\u672f  \u57df\u540d  \u676d\u5dde", 
+		"description": "Newdun", 
+		"title": "Newdun"
+	}, 
+	"list": []}
+
+
+2.获取目标域名对应服务器的信息 (压缩效率 压缩前大小 压缩后大小 协议类型 是否开启gzip压缩 文本类型)
+接口地址 192.168.199.21:3035/getServerInfo
+
+必要参数
+Parameter name 			Type		Description
+================================================================================
+master_token 			String		access_token
+domain					String		domain direct to website
+********************************************************************************
+
+返回示例
+curl -X POST 192.168.199.21:3035/getServerInfo -d "master_token=${master_token}&domain=${domain}"
+
+返回参考
+{
+	"status": {
+		"msg": "newdun.com server info get good", 
+		"code": 1000, 
+		"time": "2016-12-20 11:13:16"
+	}, 
+	"info": {
+		"contentType": "text/html; charset=UTF-8", 
+		"gzip": "On", 
+		"post_size": "140k", 
+		"pre_size": "460k", 
+		"protocal_type": "https", 
+		"grate": "69%"
+		}, 
+	"list": []
+}
+
+
+
+3.获取搜索引引擎对目标域名的收录数量 (360 baidu sogou)
+接口地址 192.168.199.21:3035/getWebInfo
+
+必要参数
+Parameter name 			Type		Description
+================================================================================
+master_token 			String		access_token
+domain					String		domain direct to website
+********************************************************************************
+
+返回示例
+curl -X POST 192.168.199.21:3035/getInclude -d "master_token=${master_token}&domain=${domain}"
+
+返回参考
+{
+	"status": {
+		"msg": "newdun.com include good", 
+		"code": 1000, 
+		"time": "2016-12-20 11:16:03"
+	}, 
+	"info": {
+		"baidu": "9", 
+		"sogou": "2", 
+		"google": 0, 
+		"360": "4"
+	}, 
+	"list": []
+}
+
+4.获取目标域名对应网站的alexa排名
+接口地址 192.168.199.21:3035/getAlexa
+
+必要参数
+Parameter name 			Type		Description
+================================================================================
+master_token 			String		access_token
+domain					String		domain direct to website
+********************************************************************************
+
+返回示例
+curl -X POST 192.168.199.21:3035/getAlexa -d "master_token=${master_token}&domain=${domain}"
+
+返回参考
+{
+	"status": {
+		"msg": "newdun.com alexa good", 
+		"code": 1000, 
+		"time": "2016-12-20 11:17:50"
+	}, 
+	"info": {
+		"alexa": "1211852"
+	}, 
+	"list": []
+}
+
+5.获取目标域名的百度权重和流量范围
+接口地址 192.168.199.21:3035/getWeight
+
+必要参数
+Parameter name 			Type		Description
+================================================================================
+master_token 			String		access_token
+domain					String		domain direct to website
+********************************************************************************
+
+返回示例
+curl -X POST 192.168.199.21:3035/getWeight -d "master_token=${master_token}&domain=${domain}"
+
+返回参考
+{
+	"status": 
+	{
+		"msg": "baidu.com baidu weight good", 
+		"code": 1000, 
+		"time": "2016-12-20 11:20:26"
+	}, 
+	"info": {
+		"To": "47062747", 
+		"From": "31152241", 
+		"Weight": "10"
+	}, 
+	"list": []
+}
+
+
+6.获取目标网站友情链接并检测是否为死链接
+接口地址 192.168.199.21:3035/getDeadLink
+
+必要参数
+Parameter name 			Type		Description
+================================================================================
+master_token 			String		access_token
+domain					String		domain direct to website
+********************************************************************************
+
+返回示例
+curl -X POST 192.168.199.21:3035/getDeadLink -d "master_token=${master_token}&domain=${domain}"
+
+返回参考
+{
+	"status": {
+		"msg": "https://www.newdun.com/ get DeadLink good", 
+		"code": 1000, 
+		"time": "2016-12-20 11:22:57"
+	}, 
+	"info": {
+		"https://www.zenzet.com/": 0, 
+		"http://www.lagou.com/jobs/2470809.html": 0, 
+		"http://www.sciener.cn/": 0, 
+		"https://www.zhongan.com/": 0, 
+		"https://www.cailai.com/": 0, 
+		"http://www.raycloud.com/": 0
+	}, 
+	"list": []
+}
+
+7.获取搜索引擎搜索关键字的前十条记录
+接口地址 192.168.199.21:3035/getTopten
+
+必要参数
+Parameter name 			Type		Description
+================================================================================
+master_token 			String		access_token
+keyword					String		the keyword search in engine
+search_engine			String		search engine we used. 360 or baidu or sogou
+********************************************************************************
+
+返回示例
+curl -X POST 192.168.199.21:3035/getTopten -d "master_token=${master_token}&keyword=${domain}&search_engine=baidu"
+
+返回参考
+{
+	"status": {
+		"msg": "engine:baidu, keyword:newdun.com, good", 
+		"code": 1000, 
+		"time": "2016-12-20 11:30:03"
+	}, 
+	"info": {}, 
+	"list": [
+		{
+			"url": "https://www.newdun.com/", 
+			"count": 1, 
+			"desc": "Newdun description", 
+			"title": "Newdun"
+		}, 
+		{
+			"url": "http://newdunj.lofter.com/", 
+			"count": 2, 
+			"desc": "newdun", 
+			"title": "newdun"
+		}
+	]
+}
+
+
+8.获取domain在关键字搜索引擎中的最靠前的排名
+接口地址 192.168.199.21:3035/getKeywordRank
+
+必要参数
+Parameter name 			Type		Description
+================================================================================
+master_token 			String		access_token
+keyword					String		the keyword search in engine
+search_engine			String		search engine we used. 360 or baidu or sogou
+domain					String 		domain you own
+********************************************************************************
+
+返回示例
+curl -X POST 192.168.199.21:3035/getKeywordRank -d "master_token=${master_token}&keyword=${domain}&search_engine=baidu&domain=newdun.com"
+
+返回参考
+{
+	"status": {
+		"msg": "engine:baidu, keyword:newdun.com, good", 
+		"code": 1000, 
+		"time": "2016-12-20 11:30:03"
+	}, 
+	"info": {"count": '50+'}, 
+	"list": []
+}
+
+
+返回状态码参考
+==================================
+code			含义
+1000           	查询成功
+10000  			正在查询请稍后
+10001  			服务器内部错误， 请告知管理员
+10002  			参数缺少或错误
+10003  			URL格式不正确
+10004  			无法解析网址
+10005  			链接超时
+10006  			搜索引擎不存在
+10008  			目标网页状态不正常
+10009  			无权访问接口
+10010  			获取百度权重出错
+10011  			获取收录数量时出错
+10012  			获取alexa排名时出错
+10020  			友链获取成功, 请继续请求获取连接状态
