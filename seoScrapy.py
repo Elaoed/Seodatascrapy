@@ -124,7 +124,7 @@ class SeoScrapy(object):
                   "info": webInfo, "list": []}
         return retobj
 
-    def friend_link(self, url):
+    def friend_link(self, url, domain):
         u'''Get friend links of url'''
 
         res = requests.get(url, headers=headers, timeout=5)
@@ -132,7 +132,7 @@ class SeoScrapy(object):
         selector = etree.HTML(html)
         footer = selector.xpath('//a/@href')
         contents = []
-        domain = url.split('/')[2]
+        # domain = url.split('/')[2]
         exclude_li = []
 
         black_list = ['http://weibo.com', 'https://twitter.com/', 'gov.cn',
@@ -162,7 +162,7 @@ class SeoScrapy(object):
             url = url_obj['url']
             r.set(domain, url)
 
-        qlinks, link_status = self.friend_link(url)
+        qlinks, link_status = self.friend_link(url, domain)
         retobj = {"status": {"msg": 'part of dead link', "code": 10020,
                              "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
                   "info": link_status, "list": []}

@@ -45,7 +45,7 @@ function test_key_word(){
 	do
 		engine=${RANENGINE[$[$RANDOM % ${#RANENGINE[@]}]]}
 		keyword=${KEYWORDS[$[$RANDOM % ${#KEYWORDS[@]}]]}
-		curl -X POST -d "domain=${url}&search_engine=${engine}&keyword=${keyword}&master_token=${master_token}" localhost:3035/getTopten
+		curl -X POST -d "domain=${url}&search_engine=baidu&keyword=1111&master_token=NuFOOb2OokoO2YrI6DkNHqWjBXUhvZdV" localhost:3035/getTopten
 		echo
 		echo "==================================================="
 	done		
@@ -54,6 +54,8 @@ function test_key_word(){
 
 test_key_word
 
+
+curl -X POST -d "domain=${url}&search_engine=${engine}&keyword=${keyword}&master_token=${master_token}" localhost:3035/getTopten
 # curl -X POST -d "domain=newdun.com&master_token=${master_token}" localhost:5003/getWebInfo
 # echo
 
