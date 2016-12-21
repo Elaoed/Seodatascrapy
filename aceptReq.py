@@ -86,7 +86,7 @@ def query_redis(redis_key):
         r.set(redis_key, retobj)
         r.expire(redis_key, 60)
         r.lpush(QUEUE_NAME, redis_key)
-    elif json.loads(result)['status']['code'] in [10005, 10008, 10010, 10011, 10012, 10020]:
+    elif json.loads(result)['status']['code'] in [10005, 10008, 10010, 10011, 10012]:
         r.lpush(QUEUE_NAME, redis_key)
         retobj = result
     else:
