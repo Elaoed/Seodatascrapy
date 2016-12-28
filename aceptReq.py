@@ -95,7 +95,7 @@ def query_redis(redis_key):
 
 
 def if_url(url):
-    if re.match('^(http[s]?\:\/\/)?(\w+\.){1,7}\w+$', url):
+    if re.match('^(http[s]?\:\/\/)?(\w+[-]?\w+\.){1,7}\w+$', url):
         return True
     return False
 
