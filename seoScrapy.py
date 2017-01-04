@@ -130,6 +130,10 @@ class SeoScrapy(object):
         u'''Get friend links of url'''
 
         res = requests.get(url, headers=headers, timeout=5)
+        jump = re.match("<meta http-equiv=\"Refresh\" content=\"0; url=(.*?)\"/>", res.content)
+        if jump:
+            new_url = jump.group(1)
+            res = requests.get(new_url, headers=headers, cookies=cookies, timeout=5)
         html = deal_encoding(res.content, res.encoding)
         selector = etree.HTML(html)
         footer = selector.xpath('//a/@href')
