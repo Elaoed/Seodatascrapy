@@ -228,7 +228,7 @@ class SeoScrapy(object):
                               jres['reason'], jres['error_code'])
         else:
             _LOGGER.error("baidu weight: %s no response or httpcode:%s",
-                          (domain, res.status_code))
+                           domain, res.status_code)
         retobj = {"status": {"msg": '%s baidu weight good' % domain,  "code": code,
                              "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
                   "info": baidu_weight, "list": []}

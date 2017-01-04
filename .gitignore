@@ -6,3 +6,4 @@ unitest.sh
 *.pyc
 .idea/*
 files/*
+*.rdb
