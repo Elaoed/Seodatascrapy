@@ -101,9 +101,11 @@ class SeoScrapy(object):
                 raise MyException(url_obj['msg'], url_obj['code'])
             url = url_obj['url']
             r.set(domain, url)
-
         res = requests.get(url, headers=headers, cookies=cookies, timeout=5)
-
+        jump = re.match("<meta http-equiv=\"Refresh\" content=\"0; url=(.*?)\"/>", res.content)
+        if jump:
+            new_url = jump.group(1)
+            res = requests.get(new_url, headers=headers, cookies=cookies, timeout=5)
         selector = etree.HTML(res.content)
         desc = selector.xpath('//*[@name="description"]/@content')
         title = selector.xpath('//title/text()')
