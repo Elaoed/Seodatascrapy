@@ -13,6 +13,7 @@ reload(sys)
 
 from bs4 import BeautifulSoup
 import redis
+import pycurl
 from lxml import etree
 import requests
 try:
@@ -174,8 +175,22 @@ class SeoScrapy(object):
                   "info": link_status, "list": []}
         r.set('dead_link:::%s' % domain, json.dumps(retobj))
         threads = []
-
         def testLink():
+
+
+            def get_http_code(url):
+
+                c = pycurl.Curl()
+                c.setopt(pycurl.CONNECTTIMEOUT, 5)
+                c.setopt(pycurl.NOBODY, 1)
+                c.setopt(pycurl.TIMEOUT, 5)
+                c.setopt(pycurl.URL, url)
+                c.setopt(pycurl.FOLLOWLOCATION, 3)
+                c.setopt(pycurl.USERAGENT,"Mozilla/5.2 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.1.4322; .NET CLR 2.0.50324)")
+                c.perform()
+                code = c.getinfo(pycurl.HTTP_CODE)
+                c.close()
+                return code
 
             while True:
                 try:
@@ -183,22 +198,21 @@ class SeoScrapy(object):
                 except Queue.Empty:
                     return
                 try:
-                    res = requests.get(
-                        link.strip(), timeout=5, headers=headers, cookies=cookies)
-                    if res.status_code == 200:
+                    status_code = get_http_code(link)
+                    if status_code == 200:
                         link_status[link] = 0
                     else:
                         link_status[link] = 1
+
                 except Exception as e:
                     _LOGGER.info('test_link %s, reason:%s', link, e)
                     link_status[link] = 1
 
-        thread_total = 20 if len(link_status) > 30 else len(link_status)
+        thread_total = len(link_status)
         for i in range(thread_total):
             threads.append(
                 threading.Thread(target=testLink))
             threads[-1].start()
-
         for i in threads:
             i.join()
 
@@ -235,7 +249,7 @@ class SeoScrapy(object):
         return retobj
 
     def get_alexa(self, domain):
-        ''' Get alexa rank of domain from http://data.alexa.com/ 
+        ''' Get alexa rank of domain from http://data.alexa.com/
         '''
         _LOGGER.info("In getAlexa")
         alexa = 0
@@ -344,7 +358,7 @@ class SeoScrapy(object):
         content = []
         selector = etree.HTML(res)
         divs = selector.xpath(ENGINE[search_engine]['content_xpath'])[:10]
-        _LOGGER.debug("get divs") 
+        _LOGGER.debug("get divs")
         count = 0
         threads = []
         for div in divs:
@@ -627,7 +641,7 @@ def try_except(orig_func):
             r.set(req, json.dumps(retobj))
             r.expire(req, 43200)
             _LOGGER.info('%s **************', req)
-            
+
     return wrapper
 
 
@@ -643,7 +657,7 @@ def run_forever(req):
 
         2.dead_link(url)                        domain:::dead_link  -> json
 
-        3.keyword_rank(url, keyword)            domain:::keyword_rank:::search_engine:::keyword   -> json       
+        3.keyword_rank(url, keyword)            domain:::keyword_rank:::search_engine:::keyword   -> json
                                                 search_engine:::keyword -> json
 
     '''
