@@ -180,9 +180,9 @@ class SeoScrapy(object):
 
             def get_http_code(url):
                 c = pycurl.Curl()
-                c.setopt(pycurl.CONNECTTIMEOUT, 3)
+                c.setopt(pycurl.CONNECTTIMEOUT, 5)
                 c.setopt(pycurl.NOBODY, 1)
-                c.setopt(pycurl.TIMEOUT, 3)
+                c.setopt(pycurl.TIMEOUT, 5)
                 c.setopt(pycurl.URL, url)
                 c.setopt(pycurl.FOLLOWLOCATION, 3)
                 c.setopt(pycurl.USERAGENT,"Mozilla/5.2 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.1.4322; .NET CLR 2.0.50324)")
