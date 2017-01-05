@@ -208,14 +208,12 @@ class SeoScrapy(object):
                     link_status[link] = 1
 
         thread_total = len(link_status)
-        # print "starttime", time.time()
         for i in range(thread_total):
             threads.append(
                 threading.Thread(target=testLink))
             threads[-1].start()
         for i in threads:
             i.join()
-        # print "endtime", time.time()
 
         retobj = {"status": {"msg": "%s get DeadLink good" % url, "code": 1000, "time": time.strftime(
             '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": link_status, "list": []}
