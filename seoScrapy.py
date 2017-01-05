@@ -179,11 +179,10 @@ class SeoScrapy(object):
 
 
             def get_http_code(url):
-
                 c = pycurl.Curl()
-                c.setopt(pycurl.CONNECTTIMEOUT, 5)
+                c.setopt(pycurl.CONNECTTIMEOUT, 3)
                 c.setopt(pycurl.NOBODY, 1)
-                c.setopt(pycurl.TIMEOUT, 5)
+                c.setopt(pycurl.TIMEOUT, 3)
                 c.setopt(pycurl.URL, url)
                 c.setopt(pycurl.FOLLOWLOCATION, 3)
                 c.setopt(pycurl.USERAGENT,"Mozilla/5.2 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.1.4322; .NET CLR 2.0.50324)")
@@ -194,7 +193,7 @@ class SeoScrapy(object):
 
             while True:
                 try:
-                    link = qlinks.get(timeout=5)
+                    link = qlinks.get(timeout=1)
                 except Queue.Empty:
                     return
                 try:
@@ -209,12 +208,14 @@ class SeoScrapy(object):
                     link_status[link] = 1
 
         thread_total = len(link_status)
+        # print "starttime", time.time()
         for i in range(thread_total):
             threads.append(
                 threading.Thread(target=testLink))
             threads[-1].start()
         for i in threads:
             i.join()
+        # print "endtime", time.time()
 
         retobj = {"status": {"msg": "%s get DeadLink good" % url, "code": 1000, "time": time.strftime(
             '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": link_status, "list": []}
