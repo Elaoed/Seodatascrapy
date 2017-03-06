@@ -68,13 +68,9 @@ def dealDomain(domain):
             ret_obj['code'] = 10003
             ret_obj['msg'] = e
 
-    # if ret_obj['code'] != 0:
-    #     raise MyException('Deal domain url:%s, code:%d, msg:%s'.format(
-    # ret_obj['url'], ret_obj['code'], ret_obj['msg']), ret_obj['code'])
-
     return ret_obj
 
-
+# '^\d+(px)?$|^\w$|^h\d$|^src\d$|^\d+$'
 def divArticle(content):
     content = re.sub(
         r'<!--(.*?)-->|x-src="(.*?)"|x-src=\'(.*?)\'', '', content)
