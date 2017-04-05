@@ -29,6 +29,7 @@ from kits.utils import ENGINE
 from kits.utils import COOKIES
 from kits.utils import HEADERS
 from kits.utils import blfilter
+from kits.utils import get_time
 from kits.redispool import Redispool
 
 monkey.patch_socket()
@@ -36,7 +37,6 @@ __REDIS = Redispool(queue='seo_scrapy:queue')
 reload(sys)
 sys.setdefaultencoding('utf-8')
 QUEUE_NAME = 'request_queue'
-# web_queue = Queue.Queue()
 BufSize = 1024 * 8
 
 with open(path.join(ROOT_PATH, 'config/db.conf'), 'r') as f:
@@ -494,9 +494,9 @@ class SeoScrapy(object):
                 try:
                     source_file = requests.get(link, timeout=2).content
                     f.write(source_file)
-                except requests.ConnectionError as e:
+                except requests.ConnectionError:
                     return
-                except requests.ReadTimeout as e:
+                except requests.ReadTimeout:
                     return
 
         threads = []
