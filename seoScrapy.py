@@ -3,13 +3,13 @@ u"""Main module of dealing with seo scrapy request"""
 from functools import wraps
 import json
 import os
+import copy
 from os import path
 import Queue
 import re
 import sys
 import time
 import gzip
-import threading
 import gevent
 from gevent import monkey
 
@@ -41,7 +41,24 @@ BufSize = 1024 * 8
 
 with open(path.join(ROOT_PATH, 'config/db.conf'), 'r') as f:
     redis_conf = json.load(f)
-_LOGGER = get_logger("seoScrapy")
+LOGGER = get_logger("seoScrapy")
+
+RET_OBJ = {"status": {"msg": "",
+                      "code": 1000,
+                      "time": get_time()},
+           "info": {},
+           "list": []}
+
+
+def get_url(domain):
+    url = __REDIS.get(domain)
+    if not url:
+        url_obj = dealDomain(domain)
+        if url_obj['code'] != 0:
+            raise MyException(url_obj['msg'], url_obj['code'])
+        url = url_obj['url']
+        __REDIS.set(domain, url)
+    return url
 
 
 class SeoScrapy(object):
@@ -58,13 +75,8 @@ class SeoScrapy(object):
         self.gRate = ''
 
     def web_info(self, domain):
-        url = __REDIS.get(domain)
-        if not url:
-            url_obj = dealDomain(domain)
-            if url_obj['code'] != 0:
-                raise MyException(url_obj['msg'], url_obj['code'])
-            url = url_obj['url']
-            __REDIS.set(domain, url)
+
+        url = get_url(domain)
         res = requests.get(url, headers=HEADERS, cookies=COOKIES, timeout=5)
         jump = re.match("<meta http-equiv=\"Refresh\" content=\"0; url=(.*?)\"/>", res.content)
         if jump:
@@ -75,27 +87,27 @@ class SeoScrapy(object):
         title = selector.xpath('//title/text()')
         keywords = selector.xpath('//*[@name="keywords"]/@content')
         keywords = "" if not keywords else keywords[0]
-        # keyword_list = divArticle(res.content)
 
         for i in divArticle(res.content):
             keywords += " %s " % i[0].encode()
 
         web_info = dict()
-        web_info['title'] = None if not title else title[0]
+        web_info['title'] = "" if not title else title[0]
         web_info['keywords'] = keywords
-        web_info['description'] = None if not desc else desc[0]
+        web_info['description'] = "" if not desc else desc[0]
 
-        retobj = {"status": {"msg": '%s in web_info good' % domain, "code": 1000,
-                             "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
-                  "info": web_info, "list": []}
+        retobj = copy.deepcopy(RET_OBJ)
+        retobj['status']['msg'] = domain + ' in web_info good'
+        retobj['status']['code'] = 1000
+        retobj['info'] = web_info
         return retobj
 
     def friend_link(self, url, domain):
         u"""Get friend links of url"""
         res = requests.get(url, headers=HEADERS, timeout=5)
-        jump = re.match("<meta http-equiv=\"Refresh\" content=\"0; url=(.*?)\"/>", res.content)
-        if jump:
-            new_url = jump.group(1)
+        re_direct = re.match("<meta http-equiv=\"Refresh\" content=\"0; url=(.*?)\"/>", res.content)
+        if re_direct:
+            new_url = re_direct.group(1)
             res = requests.get(new_url, headers=HEADERS, cookies=COOKIES, timeout=5)
         html = deal_encoding(res.content, res.encoding)
         selector = etree.HTML(html)
@@ -124,18 +136,16 @@ class SeoScrapy(object):
         return link_queue, frilink
 
     def dead_link(self, domain):
-        url = __REDIS.get(domain)
-        if not url:
-            url_obj = dealDomain(domain)
-            if url_obj['code'] != 0:
-                raise MyException(url_obj['msg'], url_obj['code'])
-            url = url_obj['url']
-            __REDIS.set(domain, url)
+
+        url = get_url(domain)
 
         qlinks, link_status = self.friend_link(url, domain)
-        retobj = {"status": {"msg": 'part of dead link', "code": 10020,
-                             "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
-                  "info": link_status, "list": []}
+
+        retobj = copy.deepcopy(RET_OBJ)
+        retobj['status']['msg'] = "part of dead link"
+        retobj['status']['code'] = 10020
+        retobj['info'] = link_status
+
         __REDIS.set('dead_link:::%s' % domain, json.dumps(retobj))
         mthreads = []
 
@@ -152,7 +162,7 @@ class SeoScrapy(object):
                         link_status[link] = 1
 
                 except Exception as e:
-                    _LOGGER.info('test_link %s, reason:%s', link, e)
+                    LOGGER.info('test_link %s, reason:%s', link, e)
                     link_status[link] = 1
 
         thread_total = len(link_status)
@@ -160,8 +170,9 @@ class SeoScrapy(object):
             mthreads.append(gevent.spawn(testLink))
         gevent.joinall(mthreads)
 
-        retobj = {"status": {"msg": "%s get DeadLink good" % url, "code": 1000, "time": time.strftime(
-            '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": link_status, "list": []}
+        retobj['status']['msg'] = url + " get DeadLink good"
+        retobj['status']['code'] = 1000
+        retobj['info'] = link_status
         return retobj
 
     def get_weight(self, domain):
@@ -177,25 +188,28 @@ class SeoScrapy(object):
                             data={'key': appkey, 'domain': domain},
                             timeout=5)
 
-        if res.status_code == 200 and res.content:
+        if res.status_code is 200 and res.content:
             jres = json.loads(res.content)
             if jres['error_code'] == 0:
                 baidu_weight = jres['result']
                 code = 1000
             else:
-                _LOGGER.error('res from juhe.cn: reason:%s, error_code:%d',
-                              jres['reason'], jres['error_code'])
+                err_msg = ("res from juhe.cn: reason:" + jres['reason'] +
+                           ", error_code:" + jres['err_code'])
+                LOGGER.error(err_msg)
         else:
-            _LOGGER.error("baidu weight: %s no response or httpcode:%s",
-                          domain, res.status_code)
-        retobj = {"status": {"msg": '%s baidu weight good' % domain, "code": code,
-                             "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
-                  "info": baidu_weight, "list": []}
+            err_msg = ("baidu weight: " + domain + " no response or httpcode:" + res.status_code)
+            LOGGER.error(err_msg)
+
+        retobj = copy.deepcopy(RET_OBJ)
+        retobj['status']['code'] = code
+        retobj['status']['msg'] = domain + ' baidu weight good'
+        retobj['info'] = baidu_weight
         return retobj
 
     def get_alexa(self, domain):
         u"""Get alexa rank of domain from http://data.alexa.com/"""
-        _LOGGER.info("In getAlexa")
+        LOGGER.info("In getAlexa")
         alexa = 0
         code = 10012
         try:
@@ -207,54 +221,58 @@ class SeoScrapy(object):
             alexa = tree[0][1].attrib['RANK']
             code = 1000
         except IndexError as err:
-            _LOGGER.info('get_alexa, %s %s', domain, err)
+            LOGGER.info('get_alexa, %s %s', domain, err)
             code = 1000
         except Exception as err:
-            _LOGGER.info('get_alexa, %s %s', domain, err)
+            LOGGER.info('get_alexa, %s %s', domain, err)
 
-        retobj = {"status": {"msg": '%s alexa good' % domain, "code": code,
-                             "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
-                  "info": {'alexa': alexa}, "list": []}
+        retobj = copy.deepcopy(RET_OBJ)
+        retobj['status']['code'] = code
+        retobj['status']['msg'] = domain + " alexa good"
+        retobj['info'] = alexa
         return retobj
 
     def get_include(self, domain):
-        try:
-            html = requests.get(
-                'https://www.baidu.com/s?wd=site:%s' % domain, headers=HEADERS, timeout=5).content
-            res = re.search(
-                '找到相关结果数约(.*?)个|该网站共有 (.*?) 个网页被百度收录', html, re.M | re.S)
-            if res:
-                if res.group(1):
-                    baidu = res.group(1)
-                else:
-                    baidu = re.search('>(.*?)<', res.group(2))
-                    baidu = baidu.group(1)
+
+        html = requests.get('https://www.baidu.com/s?wd=site:%s' + domain,
+                            headers=HEADERS,
+                            timeout=5).content
+        res = re.search('找到相关结果数约(.*?)个|该网站共有 (.*?) 个网页被百度收录',
+                        html,
+                        re.M | re.S)
+
+        if res:
+            if res.group(1):
+                baidu = res.group(1)
             else:
-                baidu = 0
+                baidu = re.search('>(.*?)<', res.group(2))
+                baidu = baidu.group(1)
+        else:
+            baidu = 0
 
-            html = requests.get(
-                'https://www.so.com/s?q=site:%s' % domain, timeout=5).content
-            res2 = re.search('找到相关结果约(.*?)个', html)
-            _360 = 0 if res2 is None else res2.group(1)
+        html = requests.get('https://www.so.com/s?q=site:' + domain,
+                            timeout=5).content
 
-            html = requests.get('https://www.sogou.com/web?query=site:%s' % domain,
-                                cookies=COOKIES,
-                                timeout=5).content
-            selector = etree.HTML(html)
-            res3 = selector.xpath(
-                '//div[@class="vr-webmsg150521"]/p/em/text()')
-            sogou = 0 if not res3 else res3[0]
-            include = {
-                'baidu': baidu, '360': _360, 'sogou': sogou, 'google': 0}
+        res2 = re.search('找到相关结果约(.*?)个', html)
+        _360 = 0 if res2 is None else res2.group(1)
 
-            retobj = {"status": {"msg": '%s include good' % domain, "code": 1000,
-                                 "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
-                      "info": include, "list": []}
-        except Exception as e:
-            _LOGGER.error('ERROR in get include, %s', e)
-            retobj = {"status": {"msg": '%s include error' % domain, "code": 10011,
-                                 "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
-                      "info": include, "list": []}
+        html = requests.get('https://www.sogou.com/web?query=site:%s' % domain,
+                            cookies=COOKIES,
+                            timeout=5).content
+        selector = etree.HTML(html)
+        res3 = selector.xpath('//div[@class="vr-webmsg150521"]/p/em/text()')
+        sogou = 0 if not res3 else res3[0]
+
+        include = {'baidu': baidu,
+                   '360': _360,
+                   'sogou': sogou,
+                   'google': 0}
+
+        retobj = copy.deepcopy(RET_OBJ)
+        retobj['status']['code'] = 1000
+        retobj['status']['msg'] = domain + " get include successful"
+        retobj['info'] = include
+
         return retobj
 
     def get_url(self, div, search_engine):
@@ -264,11 +282,8 @@ class SeoScrapy(object):
         url = url[0]
         try:
             if search_engine in 'baidu':
-                _LOGGER.debug("before request to %s", url)
                 res = requests.get(url, timeout=4, headers=HEADERS, cookies=COOKIES)
-                _LOGGER.debug("hey middle")
                 nurl = res.url
-                _LOGGER.debug("finish request to %s", url)
             else:
                 nurl = re.search("URL='(.*?)'",
                                  requests.get(url,
@@ -279,15 +294,15 @@ class SeoScrapy(object):
                 nurl = nurl.group(1) if nurl else None
             return nurl
         except requests.ReadTimeout:
-            _LOGGER.error("%s Timeout", url)
+            LOGGER.error("%s Timeout", url)
             return None
         except Exception:
             return None
 
     def engine_data(self, div, count, search_engine, content):
-        _LOGGER.debug('%d before get url', count)
+        LOGGER.debug('%d before get url', count)
         url = self.get_url(div, search_engine)
-        _LOGGER.debug('%d after get url', count)
+        LOGGER.debug('%d after get url', count)
         if not url:
             return
         title = div.xpath(ENGINE[search_engine]['title_xpath'])
@@ -297,51 +312,45 @@ class SeoScrapy(object):
 
         content.append(
             {'title': title, 'desc': desc, 'url': url, 'count': count})
-        _LOGGER.debug('%d finish append', count)
+        LOGGER.debug('%d finish append', count)
 
     def top_ten(self, search_engine, keyword):
         u"""Get top ten"""
-        _LOGGER.debug("start")
         base_url = ENGINE[search_engine]['base_url'] + keyword
         res = requests.get(base_url).content
-        _LOGGER.debug("get first page content")
         content = []
         selector = etree.HTML(res)
         divs = selector.xpath(ENGINE[search_engine]['content_xpath'])[:10]
-        _LOGGER.debug("get divs")
-        count = 0
         threads = []
-        for div in divs:
-            count += 1
-            threads.append(
-                threading.Thread(target=self.engine_data, args=(div, count, search_engine, content))
-            )
-            threads[-1].start()
-        for i in threads:
-            i.join()
-        _LOGGER.debug("finish xpath from div")
+        for index, div in enumerate(divs):
+            threads.append(gevent.spawn(self.engine_data, div, index, search_engine, content))
+        gevent.joinall(threads)
+
         content = sorted(content, key=lambda info: info['count'])
-        _LOGGER.debug("sorted")
-        retobj = {"status": {"msg": 'engine:%s, keyword:%s, good' % (search_engine, keyword),
-                             "code": 1000, "time": time.strftime('%Y-%m-%d %H:%M:%S',
-                                                                 time.localtime())},
-                  "info": {}, "list": content}
+
+        retobj = copy.deepcopy(RET_OBJ)
+        retobj['status']['msg'] = 'engine:%s, keyword:%s, good' % (search_engine, keyword)
+        retobj['list'] = content
+
         return retobj
 
-    def get_rank(self, domain, base_url, search_engine, keyword):
-        _LOGGER.info('Using search engine:%s', search_engine)
+    def get_rank(self, domain, base_url, search_engine):
+        LOGGER.info('Using search engine:%s', search_engine)
         try:
-            res = requests.get(
-                base_url, headers=HEADERS, cookies=COOKIES, timeout=5).content
-        except requests.exceptions.ConnectionError as e:
-            _LOGGER.warning("%s %s", base_url, e)
-            raise MyException("%s can not be parsed" % base_url, 10004)
+            res = requests.get(base_url,
+                               headers=HEADERS,
+                               cookies=COOKIES,
+                               timeout=5).content
+
+        except requests.exceptions.ConnectionError:
+            LOGGER.warning(base_url + " Connection error")
+            raise MyException(base_url + " can not be parsed", 10004)
         selector = etree.HTML(res)
         if search_engine in 'sogou':
             try:
                 total = selector.xpath(ENGINE[search_engine]['rstring'])[0]
-            except IndexError as e:
-                _LOGGER.error('IndexError scrapy Sogou too fast')
+            except IndexError:
+                LOGGER.error('IndexError scrapy Sogou too fast')
                 raise MyException('IndexError scrapy Sogou too fast', 10005)
         else:
             total = re.search(
@@ -352,7 +361,6 @@ class SeoScrapy(object):
 
         count = 0
         divs = []
-        threads = []
         for i in range(total):
             if i:
                 if search_engine in 'baidu':
@@ -394,43 +402,39 @@ class SeoScrapy(object):
             if domain in url:
                 content.append(count)
 
+        threads = []
         content = []
-        count = 0
-        for div in divs:
-            count += 1
-            threads.append(threading.Thread(
-                target=check_rank, args=(domain, div, count, search_engine, content)))
-            threads[-1].start()
-        for thread in threads:
-            thread.join()
+        for index, div in enumerate(divs):
+            threads.append(gevent.spawn(check_rank, domain, div, index, search_engine, content))
+        gevent.joinall(threads)
+
         count = sorted(content)[0] if content else '50+'
         return count
 
     def keyword_rank(self, domain, search_engine, keyword):
 
-        count = self.get_rank(domain, ENGINE[search_engine]['base_url'] + keyword,
-                              search_engine, keyword)
-        retobj = {"status": {"msg": '%s keyword get good' % domain, "code": 1000,
-                             "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
-                  "info": {'count': count}, "list": []}
+        count = self.get_rank(domain,
+                              ENGINE[search_engine]['base_url'] + keyword,
+                              search_engine,
+                              keyword)
+
+        retobj = copy.deepcopy(RET_OBJ)
+        retobj['status']['msg'] = domain + ' keyword get good'
+        retobj['info'] = {'count': count}
+
         return retobj
 
     def server_info(self, domain):
-        url = __REDIS.get(domain)
-        if not url:
-            url_obj = dealDomain(domain)
-            if url_obj['code'] != 0:
-                _LOGGER.error(
-                    '%s code:%s', url_obj['msg'], url_obj['code'])
-                raise MyException(url_obj['msg'], url_obj['code'])
-            url = url_obj['url']
-            __REDIS.set(domain, url)
+
+        url = get_url(domain)
+
         res = requests.get(
             url, timeout=5, headers=HEADERS, cookies=COOKIES)
         if res.status_code is not 200:
-            _LOGGER.warning(
+            LOGGER.warning(
                 "%s's return httpcode is %d", url, res.status_code)
             raise MyException("%s server_info" % url, 10004)
+
         content = deal_encoding(res.content, res.encoding)
         protocal_type = url.split(':')[0]
         if 'Content-Type' in res.headers.keys():
@@ -454,13 +458,14 @@ class SeoScrapy(object):
         server_info['contentType'] = content_type
         server_info['gzip'] = gzip_compress
         server_info['protocal_type'] = protocal_type
-        retobj = {"status": {"msg": '%s server info get good' % domain, "code": 1000,
-                             "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
-                  "info": server_info, "list": []}
+
+        retobj = copy.deepcopy(RET_OBJ)
+        retobj['status']['msg'] = domain + ' server info get good'
+        retobj['info'] = server_info
+
         return retobj
 
     def get_web_source(self, content, url):
-        _LOGGER.info('In getAllweb')
 
         soup = BeautifulSoup(content, 'lxml')
         jss = soup.find_all('script')
@@ -490,27 +495,22 @@ class SeoScrapy(object):
 
         def downSourceFile(link, i, before_filepath):
             filename = os.path.join(before_filepath + '/' + str(i))
-            with open(filename, 'wb') as f:
-                try:
-                    source_file = requests.get(link, timeout=2).content
-                    f.write(source_file)
-                except requests.ConnectionError:
-                    return
-                except requests.ReadTimeout:
-                    return
+            try:
+                source_file = requests.get(link, timeout=2).content
+                with open(filename, 'wb') as file_handler:
+                    file_handler.write(source_file)
+            except requests.ConnectionError:
+                return
+            except requests.ReadTimeout:
+                return
 
         threads = []
-        for i in range(len(useful_links)):
-            t = threading.Thread(
-                target=downSourceFile, args=(useful_links[i], i, before_filepath))
-            t.start()
-            threads.append(t)
+        for index, url in enumerate(useful_links):
+            threads.append(gevent.spawn(downSourceFile, url, index, before_filepath))
+        gevent.joinall(threads)
 
-        for i in threads:
-            i.join()
-
-        with open(os.path.join(before_filepath, 'index.html'), 'wb') as f:
-            f.write(content)
+        with open(os.path.join(before_filepath, 'index.html'), 'wb') as file_handler:
+            file_handler.write(content)
 
         pre_size = self.get_size(before_filepath) / 1000
         post_size = self.gzip_file(before_filepath, gzip_filepath) / 1000
@@ -528,13 +528,13 @@ class SeoScrapy(object):
 
     def get_size(self, dirpath):
         size = 0
-        for root, dirs, files in os.walk(dirpath):
+        for root, _, files in os.walk(dirpath):
             size += sum(os.path.getsize(os.path.join(root, name))
                         for name in files)
         return size
 
     def del_Files(self, dirpath):
-        for root, dirs, files in os.walk(dirpath):
+        for root, _, files in os.walk(dirpath):
             for name in files:
                 try:
                     os.remove(os.path.join(root, name))
@@ -546,50 +546,52 @@ class SeoScrapy(object):
     def gzip_file(self, before_filepath, gzip_filepath):
         if not os.path.exists(gzip_filepath):
             os.makedirs(gzip_filepath)
-        for root, dirs, files in os.walk(before_filepath):
+        for _, _, files in os.walk(before_filepath):
             for file_name in files:
-                f = gzip.open(os.path.join(gzip_filepath, file_name), 'wb')
-                f.write(open(os.path.join(before_filepath, file)).read())
-                f.close()
+                gzip_fd = gzip.open(os.path.join(gzip_filepath, file_name), 'wb')
+                gzip_fd.write(open(os.path.join(before_filepath, file)).read())
+                gzip_fd.close()
         return self.get_size(gzip_filepath)
 
 
 def try_except(orig_func):
+
     @wraps(orig_func)
     def wrapper(req):
         retobj = None
 
         try:
             retobj = orig_func(req)
-        except requests.exceptions.MissingSchema as e:
-            _LOGGER.error(e)
-            retobj = {"status": {"msg": 'Missing Schema', "code": 10004,
-                                 "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
-                      "info": {}, "list": []}
-        except requests.ReadTimeout as e:
-            _LOGGER.error(e)
-            retobj = {"status": {"msg": 'Read Time out', "Read Time out": 10005,
-                                 "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
-                      "info": {}, "list": []}
-        except requests.exceptions.ConnectionError as e:
-            _LOGGER.error(e)
-            retobj = {"status": {"msg": 'Connection Error', "code": 10005, "time": time.strftime(
-                '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []}
-        except MyException as e:
-            _LOGGER.error("%s, code:%d", e.msg, e.code)
-            retobj = {"status": {"msg": str(e.msg), "code": e.code,
-                                 "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
-                      "info": {}, "list": []}
-        except Exception as e:
-            _LOGGER.critical(e)
-            retobj = {"status": {"msg": 'Unknown Error...Please inform the Administrator', "code": 10001,
-                                 "time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())},
-                      "info": {}, "list": []}
+        except requests.ReadTimeout:
+            err_msg = "Read Time out"
+            LOGGER.error(err_msg)
+            retobj = copy.deepcopy(RET_OBJ)
+            retobj['status']['msg'] = err_msg
+            retobj['status']['code'] = 10005
+
+        except requests.exceptions.ConnectionError:
+            err_msg = "Connection error"
+            LOGGER.error(err_msg)
+            retobj = copy.deepcopy(RET_OBJ)
+            retobj['status']['msg'] = err_msg
+            retobj['status']['code'] = 10005
+
+        except MyException as err_msg:
+            LOGGER.error(err_msg.msg)
+            retobj = copy.deepcopy(RET_OBJ)
+            retobj['status']['msg'] = err_msg.msg
+            retobj['status']['code'] = err_msg.code
+
+        except Exception:
+            LOGGER.critical("Exceptions", exc_info=True)
+            retobj = copy.deepcopy(RET_OBJ)
+            retobj['status']['msg'] = 'Unknown Error...Please inform the Administrator'
+            retobj['status']['code'] = 10001
+
         finally:
-            _LOGGER.info('%s ==============', req)
-            __REDIS.set(req, json.dumps(retobj))
-            __REDIS.expire(req, 43200)
-            _LOGGER.info('%s **************', req)
+            LOGGER.info('%s ==============', req)
+            __REDIS.setex(req, json.dumps(retobj), 43200)
+            LOGGER.info('%s **************', req)
 
     return wrapper
 
@@ -610,9 +612,8 @@ def run_forever(req):
                                                 search_engine:::keyword -> json
 
     """
-    _LOGGER.info("Deal %s", req)
+    LOGGER.info("Deal %s", req)
     param_string = req.split(':::')
-    result = ""
 
     if param_string[1] in 'keyword_rank':
         result = FUNC[param_string[1]](
@@ -621,7 +622,6 @@ def run_forever(req):
         result = FUNC[param_string[0]](param_string[1], param_string[2])
     else:
         result = FUNC[param_string[0]](param_string[1])
-    return result
 
 if __name__ == "__main__":
     seo = SeoScrapy()
@@ -631,6 +631,11 @@ if __name__ == "__main__":
             'server_info': seo.server_info, 'top_ten': seo.top_ten}
 
     while True:
-        request = __REDIS.pop(QUEUE_NAME)
-        task = threading.Thread(target=run_forever, args=(request, ))
-        task.start()
+        if __REDIS.exists(QUEUE_NAME) is None:
+            time.sleep(1)
+            continue
+        request_li = __REDIS.lrange(QUEUE_NAME, 0, -1)
+        task_li = []
+        for request in request_li:
+            task_li.append(gevent.spawn(run_forever, request))
+        gevent.joinall(task_li)
