@@ -1,5 +1,5 @@
 # encoding=utf-8
-'''accept request from users and make simple format check'''
+"""accept request from users and make simple format check"""
 import re
 import time
 import json
@@ -8,10 +8,10 @@ from functools import wraps
 import redis
 import requests
 from flask import Flask, request
-from kits.config import ROOT_PATH
 from kits.log import get_logger
 from kits.MyException import MyException
 
+ROOT_PATH = path.dirname(path.realpath(__file__))
 with open(path.join(ROOT_PATH, 'config/db.conf'), 'r') as f:
     redis_conf = json.load(f)
 r = redis.Redis(
@@ -38,7 +38,7 @@ def try_except(orig_func):
                     'the token of corresponding ip is wrong', 10009)
             return orig_func()
         except requests.exceptions.SSLError as e:
-            LOGGER.info('%s' % e)
+            LOGGER.info(e)
             retobj = {"status": {"msg": 'HTTPS ERROR--for example:https://baidu.com without www', "code": 10004, "time": time.strftime(
                 '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []}
             return json.dumps(retobj)
@@ -48,12 +48,12 @@ def try_except(orig_func):
                 '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []}
             return json.dumps(retobj)
         except MyException as e:
-            LOGGER.info('%s' % e.msg)
+            LOGGER.info(e.msg)
             retobj = {"status": {"msg": '%s' % e.msg, "code": e.code, "time": time.strftime(
                 '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []}
             return json.dumps(retobj)
         except Exception as e:
-            LOGGER.info('%s' % e)
+            LOGGER.info("Exception", exc_info=True)
             retobj = {"status": {"msg": 'Unknown Error...Please inform the Administrator', "code": 10001, "time": time.strftime(
                 '%Y-%m-%d %H:%M:%S', time.localtime())}, "info": {}, "list": []}
             return json.dumps(retobj)

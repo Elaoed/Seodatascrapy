@@ -51,10 +51,7 @@ COOKIES = {
 
 
 def blfilter(domain, url):
-    if domain in url:
-        return True
-    else:
-        return False
+    return (False, True)[domain in url]
 
 
 def get_time(timestamp=time.time()):

@@ -7,20 +7,21 @@ import requests
 import jieba
 from lxml import etree
 import sys
+from utils import HEADERS
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
-headers = {
-    'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-    'Accept-Encoding': 'gzip, deflate, sdch',
-    'Accept-Language': 'en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4,ja;q=0.2',
-    'Cache-Control': 'max-age=0',
-    'Connection': 'keep-alive',
-    'DNT': '1',
-    'Upgrade-Insecure-Requests': '1'
-}
+# HEADERS = {
+#     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36',
+#     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+#     'Accept-Encoding': 'gzip, deflate, sdch',
+#     'Accept-Language': 'en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4,ja;q=0.2',
+#     'Cache-Control': 'max-age=0',
+#     'Connection': 'keep-alive',
+#     'DNT': '1',
+#     'Upgrade-Insecure-Requests': '1'
+# }
 
 
 def dealDomain(domain):
@@ -32,7 +33,7 @@ def dealDomain(domain):
     if not re.search('^http|^https', domain if domain else ""):
         try:
             conn = httplib.HTTPConnection(domain, 80, timeout=4)
-            conn.request('GET', '/', headers=headers)
+            conn.request('GET', '/', headers=HEADERS)
             res = conn.getresponse()
             if res.status == 301 or res.status == 302:
                 ret_obj['url'] = res.msg['Location']
@@ -71,6 +72,8 @@ def dealDomain(domain):
     return ret_obj
 
 # '^\d+(px)?$|^\w$|^h\d$|^src\d$|^\d+$'
+
+
 def divArticle(content):
     content = re.sub(
         r'<!--(.*?)-->|x-src="(.*?)"|x-src=\'(.*?)\'', '', content)
@@ -78,7 +81,7 @@ def divArticle(content):
     d = jieba.cut(content, cut_all=True)
     li = [i.encode() for i in d]
     count = {}
-    exclude_li = [' ', '\r',  '\n', '<', '>', '!', 'div', 'li', 'ul', 'span', 'target',
+    exclude_li = [' ', '\r', '\n', '<', '>', '!', 'div', 'li', 'ul', 'span', 'target',
                   'href', 'class', 'script', '\t', '=', '.', 'col', ':', '-', '#', '_',
                   'h1', '/', "'", '"', 'lg', 'h2', 'fa', 'i', 'row', 'center', 'md',
                   'icon', 'sm', 'text', 'page', 'blank', 'style', ';', 'alt', '|', 'h5',
@@ -114,7 +117,7 @@ def divArticle(content):
                   'hot', 'getElementById', 'mininavInner', 'items', 'tubd', 'yw', 'ft', 'loginGray', 'tubdYwArr', '\xe5\x9b\xbe\xe6\xa0\x87',
                   '\xe5\xb7\x9e\xe5\xb8\x82', '\xe6\x9c\x80\xe5\xa4\xa7', 'Date', '\xe6\x9b\xb4\xe5\xa4\x9a', 'test',
                   'mh', '\xe6\x9f\xa5\xe7\x9c\x8b', 'addClass', '\xe5\x89\xa9\xe4\xbd\x99\xe6\x97\xb6\xe9\x97\xb4', 'cookie', 'sStat',
-                  'path'] + ['%dpx' % i for i in range(100)] + ['%d' % i for i in range(100)]
+                  'path'] + ['%dpx' % i for i in xrange(100)] + ['%d' % i for i in xrange(100)]
 
     for i in li:
 
@@ -122,14 +125,14 @@ def divArticle(content):
             try:
                 int(i)
                 continue
-            except ValueError as e:
+            except ValueError:
                 pass
             if re.search('#|\n', i):
                 continue
             if re.search('^[^\u4e00-\u9fa5]', i.decode()):
                 if not re.search('^[^\u4e00-\u9fa5]{2,}', i.decode()):
                     continue
-            if not count.has_key(i):
+            if i not in count:
                 count[i] = 1
             else:
                 count[i] += 1

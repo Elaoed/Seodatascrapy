@@ -41,6 +41,7 @@ BufSize = 1024 * 8
 
 with open(path.join(ROOT_PATH, 'config/db.conf'), 'r') as f:
     redis_conf = json.load(f)
+
 LOGGER = get_logger("seoScrapy")
 
 RET_OBJ = {"status": {"msg": "",
@@ -118,14 +119,14 @@ class SeoScrapy(object):
 
         black_list = ['http://weibo.com', 'https://twitter.com/', 'gov.cn',
                       'http://szcert.ebs.org.cn/', 'shang.qq.com', 'ss.knet.cn', domain]
-        if footer:
-            for url in footer:
-                if url not in contents and re.match('^http[s]?', url) and \
-                        url[-3:] not in ['jpg', 'png', 'pdf', 'exe', 'rar', 'mp3'] and \
-                        url.split('/')[2] not in exclude_li:
-                    if True not in [blfilter(i, url) for i in black_list]:
-                        contents.append(url)
-                        exclude_li.append(url.split('/')[2])
+        # if footer:
+        for url in footer:
+            if url not in contents and re.match('^http[s]?', url) and \
+                    url[-3:] not in ['jpg', 'png', 'pdf', 'exe', 'rar', 'mp3'] and \
+                    url.split('/')[2] not in exclude_li:
+                if not any([blfilter(_domain, url) for _domain in black_list]):
+                    contents.append(url)
+                    exclude_li.append(url.split('/')[2])
 
         link_queue = Queue.Queue()
         frilink = {}
