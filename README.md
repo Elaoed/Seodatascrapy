@@ -16,3 +16,4 @@ This project is aim to search seo data for given domain.
 2. Put too many data into redis. It's not a good thing
 3. Not pass test yet
 4. With many non-effective friend link test.
+5. Should add get method after head method faild

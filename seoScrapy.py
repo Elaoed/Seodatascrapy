@@ -12,19 +12,15 @@ import time
 import gzip
 import gevent
 from gevent import monkey
-
 from bs4 import BeautifulSoup
 from lxml import etree
 import requests
-try:
-    import xml.etree.cElementTree as ET
-except ImportError:
-    import xml.etree.ElementTree as ET
-
-from kits.config import ROOT_PATH
+import xml.etree.cElementTree as ET
 from kits.log import get_logger
-from kits.dealDomain import dealDomain, divArticle, deal_encoding
-from kits.MyException import MyException
+from kits.dealDomain import dealDomain
+from kits.dealDomain import divide_article
+# from kits.dealDomain import deal_encoding
+from kits.my_exception import MyException
 from kits.utils import ENGINE
 from kits.utils import COOKIES
 from kits.utils import HEADERS
@@ -38,17 +34,15 @@ reload(sys)
 sys.setdefaultencoding('utf-8')
 QUEUE_NAME = 'request_queue'
 BufSize = 1024 * 8
-
-with open(path.join(ROOT_PATH, 'config/db.conf'), 'r') as f:
-    redis_conf = json.load(f)
-
+ROOT_PATH = path.dirname(path.realpath(__file__))
 LOGGER = get_logger("seoScrapy")
-
 RET_OBJ = {"status": {"msg": "",
                       "code": 1000,
                       "time": get_time()},
            "info": {},
            "list": []}
+with open(path.join(ROOT_PATH, 'config/db.conf'), 'r') as f:
+    redis_conf = json.load(f)
 
 
 def get_url(domain):
@@ -89,7 +83,7 @@ class SeoScrapy(object):
         keywords = selector.xpath('//*[@name="keywords"]/@content')
         keywords = "" if not keywords else keywords[0]
 
-        for i in divArticle(res.content):
+        for i in divide_article(res.content):
             keywords += " %s " % i[0].encode()
 
         web_info = dict()
@@ -110,7 +104,8 @@ class SeoScrapy(object):
         if re_direct:
             new_url = re_direct.group(1)
             res = requests.get(new_url, headers=HEADERS, cookies=COOKIES, timeout=5)
-        html = deal_encoding(res.content, res.encoding)
+        # html = deal_encoding(res.content, res.encoding)
+        html = res.text
         selector = etree.HTML(html)
         footer = selector.xpath('//a/@href')
         contents = []
@@ -139,7 +134,6 @@ class SeoScrapy(object):
     def dead_link(self, domain):
 
         url = get_url(domain)
-
         qlinks, link_status = self.friend_link(url, domain)
 
         retobj = copy.deepcopy(RET_OBJ)
@@ -147,24 +141,25 @@ class SeoScrapy(object):
         retobj['status']['code'] = 10020
         retobj['info'] = link_status
 
-        __REDIS.set('dead_link:::%s' % domain, json.dumps(retobj))
+        __REDIS.set('dead_link:::' + domain, json.dumps(retobj))
         mthreads = []
 
         def testLink():
-
-            while True:
-                try:
-                    if qlinks.qsize() != 0:
-                        link = qlinks.get()
-                    status_code = requests.head(url).stauts_code
-                    if status_code == 200:
-                        link_status[link] = 0
-                    else:
-                        link_status[link] = 1
-
-                except Exception as e:
-                    LOGGER.info('test_link %s, reason:%s', link, e)
+            try:
+                if qlinks.qsize() != 0:
+                    link = qlinks.get()
+                status_code = requests.head(url).stauts_code
+                if status_code == 200:
+                    link_status[link] = 0
+                elif status_code == 405:
+                    status_code = requests.get(url).stauts_code
+                else:
                     link_status[link] = 1
+
+            except Exception as e:
+                msg = ''.join(["test_link:", link, ", reason:", e])
+                LOGGER.info(msg)
+                link_status[link] = 1
 
         thread_total = len(link_status)
         for _ in range(thread_total):
@@ -214,7 +209,7 @@ class SeoScrapy(object):
         alexa = 0
         code = 10012
         try:
-            res = requests.get('http://data.alexa.com/data?cli=10&&url=%s' % domain,
+            res = requests.get('http://data.alexa.com/data?cli=10&&url=' + domain,
                                timeout=8,
                                headers=HEADERS)
             html = res.content
@@ -416,8 +411,9 @@ class SeoScrapy(object):
 
         count = self.get_rank(domain,
                               ENGINE[search_engine]['base_url'] + keyword,
-                              search_engine,
-                              keyword)
+                              search_engine)
+        # ,
+        # keyword)
 
         retobj = copy.deepcopy(RET_OBJ)
         retobj['status']['msg'] = domain + ' keyword get good'
@@ -428,26 +424,28 @@ class SeoScrapy(object):
     def server_info(self, domain):
 
         url = get_url(domain)
+        res = requests.get(url,
+                           timeout=5,
+                           headers=HEADERS,
+                           cookies=COOKIES)
 
-        res = requests.get(
-            url, timeout=5, headers=HEADERS, cookies=COOKIES)
         if res.status_code is not 200:
-            LOGGER.warning(
-                "%s's return httpcode is %d", url, res.status_code)
-            raise MyException("%s server_info" % url, 10004)
+            msg = ''.join([url, "'s return httpcode is ", str(res.status_code)])
+            LOGGER.warning(msg)
+            raise MyException(url + " server_info", 10004)
 
-        content = deal_encoding(res.content, res.encoding)
+        # content = deal_encoding(res.content, res.encoding)
+        content = res.text
         protocal_type = url.split(':')[0]
-        if 'Content-Type' in res.headers.keys():
+        if 'Content-Type' in res.headers:
             content_type = res.headers['Content-Type']
         else:
             content_type = res.headers['content-type']
 
-        if 'Content-Encoding' in res.headers.keys():
+        if 'Content-Encoding' in res.headers:
             gzip_compress = 'On' if 'gzip' in res.headers['Content-Encoding'] else 'Off'
-        elif 'content-encoding' in res.headers.keys():
-            gzip_compress = 'On' if 'gzip' in res.headers[
-                'content-encoding'] else 'Off'
+        elif 'content-encoding' in res.headers:
+            gzip_compress = 'On' if 'gzip' in res.headers['content-encoding'] else 'Off'
         else:
             gzip_compress = 'Off'
         pre_size, post_size, grate = self.get_web_source(content, url)
@@ -613,12 +611,13 @@ def run_forever(req):
                                                 search_engine:::keyword -> json
 
     """
-    LOGGER.info("Deal %s", req)
+    LOGGER.info("Deal " + req)
     param_string = req.split(':::')
 
     if param_string[1] in 'keyword_rank':
-        result = FUNC[param_string[1]](
-            param_string[0], param_string[2], param_string[3])
+        result = FUNC[param_string[1]](param_string[0],
+                                       param_string[2],
+                                       param_string[3])
     elif param_string[0] in 'top_ten':
         result = FUNC[param_string[0]](param_string[1], param_string[2])
     else:
