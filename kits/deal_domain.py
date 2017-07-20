@@ -1,12 +1,12 @@
 # encoding=utf-8
 import re
 import requests
-from requests.exceptions import RequestException
 import jieba
 from lxml import etree
 import chardet
 
 from kits.constants import HEADERS
+from kits.constants import COOKIES
 from kits.log import ROOT_PATH
 
 with open(ROOT_PATH + '/config/filter_list', 'r') as f:
@@ -18,11 +18,11 @@ def vice_get_response(domain):
     url = domain if 'http' in domain else 'http://' + domain
 
     try:
-        res = requests.get(url, headers=HEADERS, timeout=3)
+        res = requests.get(url, headers=HEADERS, cookies=COOKIES, timeout=3)
         if 200 <= res.status_code < 400:
             return res
 
-    except RequestException:
+    except requests.exceptions.RequestException:
         return None
 
     return None
@@ -39,32 +39,33 @@ def get_response(domain):
     return response
 
 def divide_article(content):
+
     content = re.sub(
         r'<!--(.*?)-->|x-src="(.*?)"|x-src=\'(.*?)\'', '', content)
     content = re.sub(r'\w+-?\w+="(.*?)"|\w+-?\w+=\'(.*?)\'', '', content)
-    d = jieba.cut(content, cut_all=True)
-    li = [i.encode() for i in d]
-    count = {}
-    exclude_li = [' ', '\r', '\t', "'", '"', '\n', '\n\n', '\n\n\n'] + \
-                 ['%dpx' % i for i in range(100)] + \
-                 ['%d' % i for i in range(100)] + EXCLUDE_LIST
 
-    for i in li:
-        if i and len(i) > 1 and i not in exclude_li:
+    li = jieba.cut(content, cut_all=True)
+    count = {}
+    exclude_li = EXCLUDE_LIST + ['%d' % i for i in range(100)] + \
+                 ['%dpx' % i for i in range(100)] + \
+                 [' ', '\r', '\t', "'", '"', '\n', '\n\n', '\n\n\n']
+
+    for piece in li:
+        if len(piece) > 1 and piece not in exclude_li:
             try:
-                int(i)
+                int(piece)
                 continue
             except ValueError:
                 pass
-            if re.search('#|\n', i):
+            if re.search('#|\n', piece):
                 continue
-            if re.search('^[^\u4e00-\u9fa5]', i.decode()):
-                if not re.search('^[^\u4e00-\u9fa5]{2,}', i.decode()):
+            if re.search('^[^\u4e00-\u9fa5]', piece):
+                if not re.search('^[^\u4e00-\u9fa5]{2,}', piece):
                     continue
-            if i not in count:
-                count[i] = 1
+            if piece not in count:
+                count[piece] = 1
             else:
-                count[i] += 1
+                count[piece] += 1
     return sorted(count.items(), key=lambda count: count[1], reverse=True)[:10]
 
 

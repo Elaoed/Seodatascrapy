@@ -5,6 +5,7 @@ import os
 import copy
 import re
 import gzip
+import shutil
 from functools import wraps
 
 import requests
@@ -15,6 +16,7 @@ from lxml import etree
 import xml.etree.cElementTree as ET
 
 from kits.log import get_logger
+from kits.log import ROOT_PATH
 from kits.utils import blfilter
 from kits.utils import gget
 from kits.redispool import Redispool
@@ -41,6 +43,7 @@ class SeoScrapy(object):
     """SEO data Scrapy"""
 
     def __init__(self):
+        self.domain = ''
         self.url = ''
         self.pro_type = ''
         self.res = ''
@@ -52,20 +55,16 @@ class SeoScrapy(object):
 
     def web_info(self, domain):
 
-        url = get_url(domain)
-        res = requests.get(url, headers=HEADERS, cookies=COOKIES, timeout=5)
-        jump = re.match("<meta http-equiv=\"Refresh\" content=\"0; url=(.*?)\"/>", res.content)
-        if jump:
-            new_url = jump.group(1)
-            res = requests.get(new_url, headers=HEADERS, cookies=COOKIES, timeout=5)
-        selector = etree.HTML(res.content)
+        self.response = get_response(domain)
+        selector = etree.HTML(self.response.text)
         desc = selector.xpath('//*[@name="description"]/@content')
         title = selector.xpath('//title/text()')
         keywords = selector.xpath('//*[@name="keywords"]/@content')
         keywords = "" if not keywords else keywords[0]
 
-        for i in divide_article(res.content):
-            keywords += " %s " % i[0].encode()
+        divide_result = divide_article(self.response.text)
+        for res in divide_result:
+            keywords += " %s " % res[0]
 
         web_info = dict()
         web_info['title'] = "" if not title else title[0]
@@ -130,23 +129,27 @@ class SeoScrapy(object):
         retobj['status']['msg'] = domain + " get DeadLink good"
         retobj['status']['code'] = 1000
         retobj['info'] = link_status
+        config['logger'].debug(retobj)
         return retobj
 
     def get_weight(self, domain):
 
+        url = 'http://op.juhe.cn/baiduWeight/index'
         appkey = '618e7a46808573be2401596582de62fb'
+        data = {
+            'key': appkey,
+            'domain': domain
+        }
         baidu_weight = {
             "To": "0",
             "From": "0",
             "Weight": "0"
         }
         code = 10010
-        res = requests.post('http://op.juhe.cn/baiduWeight/index',
-                            data={'key': appkey, 'domain': domain},
-                            timeout=5)
+        res = requests.post(url, data=data, timeout=5)
 
-        if res.status_code is 200 and res.content:
-            jres = json.loads(res.content)
+        if res.status_code is 200:
+            jres = res.json()
             if jres['error_code'] == 0:
                 baidu_weight = jres['result']
                 code = 1000
@@ -162,6 +165,7 @@ class SeoScrapy(object):
         retobj['status']['code'] = code
         retobj['status']['msg'] = domain + ' baidu weight good'
         retobj['info'] = baidu_weight
+        config['logger'].debug(retobj)
         return retobj
 
     def get_alexa(self, domain):
@@ -187,16 +191,16 @@ class SeoScrapy(object):
         retobj['status']['code'] = code
         retobj['status']['msg'] = domain + " alexa good"
         retobj['info'] = alexa
+        config['logger'].debug(retobj)
         return retobj
 
     def get_include(self, domain):
 
-        html = requests.get('https://www.baidu.com/s?wd=site:%s' + domain,
-                            headers=HEADERS,
-                            timeout=5).content
-        res = re.search('找到相关结果数约(.*?)个|该网站共有 (.*?) 个网页被百度收录',
-                        html,
-                        re.M | re.S)
+        baidu_str = 'https://www.baidu.com/s?wd=site:%s' + domain
+        html = requests.get(baidu_str, headers=HEADERS, timeout=5).text
+
+        pattern = '找到相关结果数约(.*?)个|该网站共有 (.*?) 个网页被百度收录'
+        res = re.search(pattern, html, re.M | re.S)
 
         if res:
             if res.group(1):
@@ -207,15 +211,13 @@ class SeoScrapy(object):
         else:
             baidu = 0
 
-        html = requests.get('https://www.so.com/s?q=site:' + domain,
-                            timeout=5).content
-
+        _360_str = 'https://www.so.com/s?q=site:' + domain
+        html = requests.get(_360_str, timeout=5).text
         res2 = re.search('找到相关结果约(.*?)个', html)
         _360 = 0 if res2 is None else res2.group(1)
 
-        html = requests.get('https://www.sogou.com/web?query=site:%s' % domain,
-                            cookies=COOKIES,
-                            timeout=5).content
+        sogou_str = 'https://www.sogou.com/web?query=site:' + domain
+        html = requests.get(sogou_str, cookies=COOKIES, timeout=5).text
         selector = etree.HTML(html)
         res3 = selector.xpath('//div[@class="vr-webmsg150521"]/p/em/text()')
         sogou = 0 if not res3 else res3[0]
@@ -229,7 +231,7 @@ class SeoScrapy(object):
         retobj['status']['code'] = 1000
         retobj['status']['msg'] = domain + " get include successful"
         retobj['info'] = include
-
+        config['logger'].debug(retobj)
         return retobj
 
     def get_url(self, div, search_engine):
@@ -256,116 +258,122 @@ class SeoScrapy(object):
         except Exception:
             return None
 
-    def engine_data(self, div, count, search_engine, content):
-        config['logger'].debug('%d before get url', count)
+    def engine_data(self, div, search_engine):
+
         url = self.get_url(div, search_engine)
-        config['logger'].debug('%d after get url', count)
         if not url:
             return
+
         title = div.xpath(ENGINE[search_engine]['title_xpath'])
         title = title[0].xpath('string(.)').strip() if title else ""
         desc = div.xpath(ENGINE[search_engine]['desc_xpath'])
         desc = desc[0].xpath('string(.)') if desc else ""
 
-        content.append(
-            {'title': title, 'desc': desc, 'url': url, 'count': count})
-        config['logger'].debug('%d finish append', count)
+        # config['logger'].debug('%d finish append', index)
+        return {'title': title, 'desc': desc, 'url': url, 'count': 0}
 
     def top_ten(self, search_engine, keyword):
         """Get top ten"""
         base_url = ENGINE[search_engine]['base_url'] + keyword
-        res = requests.get(base_url).content
+        res = requests.get(base_url, headers=HEADERS, cookies=COOKIES, timeout=3).text
         content = []
         selector = etree.HTML(res)
         divs = selector.xpath(ENGINE[search_engine]['content_xpath'])[:10]
-        threads = []
         for index, div in enumerate(divs):
-            threads.append(gevent.spawn(self.engine_data, div, index, search_engine, content))
-        gevent.joinall(threads)
+            res = self.engine_data(div, search_engine)
+            res['count'] = index
+            content.append(res)
 
         content = sorted(content, key=lambda info: info['count'])
 
         retobj = copy.deepcopy(RETOBJ)
-        retobj['status']['msg'] = 'engine:%s, keyword:%s, good' % (search_engine, keyword)
+        retobj['status']['msg'] = 'top_ten engine:%s, keyword:%s, good' % (search_engine, keyword)
         retobj['list'] = content
-
+        config['logger'].debug(retobj)
         return retobj
 
     def get_rank(self, domain, base_url, search_engine):
-        config['logger'].info('Using search engine:%s', search_engine)
+        config['logger'].info('Using search engine:' + search_engine)
         try:
             res = requests.get(base_url,
                                headers=HEADERS,
                                cookies=COOKIES,
-                               timeout=5).content
+                               timeout=5).text
 
         except requests.exceptions.ConnectionError:
             config['logger'].warning(base_url + " Connection error")
             raise MyException(base_url + " can not be parsed", 10004)
+
         selector = etree.HTML(res)
-        if search_engine in 'sogou':
+        if search_engine == 'sogou':
             try:
                 total = selector.xpath(ENGINE[search_engine]['rstring'])[0]
             except IndexError:
                 config['logger'].error('IndexError scrapy Sogou too fast')
                 raise MyException('IndexError scrapy Sogou too fast', 10005)
         else:
-            total = re.search(
-                ENGINE[search_engine]['rstring'], res).group(1)
+            total = re.search(ENGINE[search_engine]['rstring'], res).group(1)
+
         total = int(total.replace(',', ''))
         total = 5 if total > 50 else (
-            (total / 10 + 1) if total % 10 > 0 else total / 10)
+            (total // 10 + 1) if total % 10 > 0 else total // 10)
 
         count = 0
         divs = []
-        for i in range(total):
-            if i:
-                if search_engine in 'baidu':
-                    nurl = base_url + '&pn=%d' % (i * 10)
-                elif search_engine in '360':
-                    nurl = base_url + "&pn=%d" % (i + 1)
-                else:
-                    nurl = base_url + "&page=%d" % (i + 1)
-                res = requests.get(
-                    nurl, headers=HEADERS, cookies=COOKIES, timeout=5).content
-                selector = etree.HTML(res)
+        urls = []
+        for i in range(1, total):
+            if search_engine == 'baidu':
+                nurl = base_url + '&pn=' + str(i * 10)
+            elif search_engine == '360':
+                nurl = base_url + "&pn=" + str(i + 1)
+            else:
+                nurl = base_url + "&page=" + str(i + 1)
+            urls.append(nurl)
 
-            divs += selector.xpath(
-                ENGINE[search_engine]['content_xpath'])
+        reses = gget(urls, timeout=3)
+        for res in reses:
+            selector = etree.HTML(res.text)
+            divs += selector.xpath(ENGINE[search_engine]['content_xpath'])
 
-        def check_rank(domain, div, count, search_engine, content):
-            url = div.xpath(ENGINE[search_engine]['url_xpath'])
-            if not url:
-                return
-            url = url[0]
-            if search_engine in 'baidu':
-                try:
-                    url = requests.get(url, timeout=5).url
-                except requests.ReadTimeout:
-                    return
-                except Exception:
-                    return
+        def check_baidu_rank(divs):
 
-            elif search_engine in ['360', 'sogou']:
-                try:
-                    nurl = re.search(
-                        "URL='(.*?)'", requests.get(url, timeout=5).content)
-                except requests.ReadTimeout:
-                    return
-                except Exception:
-                    return
-                if nurl:
-                    url = nurl.group(1)
-            if domain in url:
-                content.append(count)
+            urls = []
+            for div in divs:
+                url = div.xpath(ENGINE[search_engine]['url_xpath'])
+                urls += url
+            return urls
 
-        threads = []
-        content = []
-        for index, div in enumerate(divs):
-            threads.append(gevent.spawn(check_rank, domain, div, index, search_engine, content))
-        gevent.joinall(threads)
+        def check_sogou_360_rank(divs):
 
-        count = sorted(content)[0] if content else '50+'
+            urls = []
+            for div in divs:
+                url = div.xpath(ENGINE[search_engine]['url_xpath'])
+                urls.append(url)
+
+            reses = gget(urls, timeout=3)
+
+            urls = []
+            for res in reses:
+                urls.append(re.search("URL='(.*?)'", res.text))
+            return urls
+
+        if search_engine == 'baidu':
+            urls = check_baidu_rank(divs)
+            print("urls from check rank")
+        elif search_engine in ['360', 'sogou']:
+            urls = check_sogou_360_rank(divs)
+
+        count = None
+        reses = gget(urls, timeout=3)
+        urls = {}
+        for index, res in enumerate(reses, 1):
+            if res:
+                if domain in res.url:
+                    count = str(index)
+                    break
+        else:
+            count = '50+'
+
         return count
 
     def keyword_rank(self, domain, search_engine, keyword):
@@ -374,28 +382,31 @@ class SeoScrapy(object):
                               ENGINE[search_engine]['base_url'] + keyword,
                               search_engine)
 
+        print(RETOBJ)
         retobj = copy.deepcopy(RETOBJ)
         retobj['status']['msg'] = domain + ' keyword get good'
         retobj['info'] = {'count': count}
-
+        config['logger'].debug(retobj)
         return retobj
 
     def server_info(self, domain):
 
-        url = get_url(domain)
-        res = requests.get(url,
-                           timeout=5,
-                           headers=HEADERS,
-                           cookies=COOKIES)
+        self.domain = domain
+        self.response = get_response(domain)
+        if not self.response:
+            msg = domain + "Connection Error"
+            config['logger'].warning(msg)
+            raise Exception(domain + " server_info", 10004)
+
+        res = self.response
+        self.url = res.url
 
         if res.status_code is not 200:
-            msg = ''.join([url, "'s return httpcode is ", str(res.status_code)])
+            msg = ''.join([res.url, "'s return httpcode is ", str(res.status_code)])
             config['logger'].warning(msg)
-            raise MyException(url + " server_info", 10004)
+            raise MyException(res.url + " server_info", 10004)
 
-        # content = deal_encoding(res.content, res.encoding)
-        content = res.text
-        protocal_type = url.split(':')[0]
+        protocal_type = self.response.url.split(':')[0]
         if 'Content-Type' in res.headers:
             content_type = res.headers['Content-Type']
         else:
@@ -407,7 +418,7 @@ class SeoScrapy(object):
             gzip_compress = 'On' if 'gzip' in res.headers['content-encoding'] else 'Off'
         else:
             gzip_compress = 'Off'
-        pre_size, post_size, grate = self.get_web_source(content, url)
+        pre_size, post_size, grate = self.get_web_source()
 
         server_info = {}
         server_info['pre_size'] = pre_size
@@ -420,17 +431,17 @@ class SeoScrapy(object):
         retobj = copy.deepcopy(RETOBJ)
         retobj['status']['msg'] = domain + ' server info get good'
         retobj['info'] = server_info
-
+        config['logger'].debug(retobj)
         return retobj
 
-    def get_web_source(self, content, url):
+    def get_web_source(self):
 
-        soup = BeautifulSoup(content, 'lxml')
-        jss = soup.find_all('script')
-        css = soup.find_all('link')
-        imgs = soup.find_all('img')
-        links = [i.get('src') for i in jss] + [i.get('href')
-                                               for i in css] + [i.get('src') for i in imgs]
+        soup = BeautifulSoup(self.response.text, 'lxml')
+        jss = [i.get('src') for i in soup.find_all('script')]
+        css = [i.get('href') for i in soup.find_all('link')]
+        imgs = [i.get('src') for i in soup.find_all('img')]
+        links = jss + css + imgs
+
         useful_links = []
         for link in links:
             if not link:
@@ -438,28 +449,29 @@ class SeoScrapy(object):
             if re.match('//', link):
                 useful_links.append('http:' + link)
             elif re.match('/', link):
-                useful_links.append(url + link)
+                useful_links.append(self.url + link)
             elif re.match('http', link) or re.match('https', link):
                 useful_links.append(link)
             else:
                 continue
 
-        dirpath = os.path.dirname(os.path.realpath(__file__))
-        before_filepath = os.path.join(dirpath, 'files/%s_files' % url)
-        gzip_filepath = os.path.join(
-            dirpath, 'files/%s_gzipfiles' % url)
+        before_filepath = os.path.join(ROOT_PATH, 'files/' + self.domain + '_files')
+        gzip_filepath = os.path.join(ROOT_PATH, 'files/' + self.domain + '_gzipfiles')
+
         if not os.path.exists(before_filepath):
             os.makedirs(before_filepath)
 
-        def downSourceFile(link, i, before_filepath):
-            filename = os.path.join(before_filepath + '/' + str(i))
+        if not os.path.exists(gzip_filepath):
+            os.makedirs(gzip_filepath)
+
+        def downSourceFile(link, index, before_filepath):
+            filename = os.path.join(before_filepath, str(index))
             try:
-                source_file = requests.get(link, timeout=2).content
-                with open(filename, 'wb') as file_handler:
-                    file_handler.write(source_file)
-            except requests.ConnectionError:
-                return
-            except requests.ReadTimeout:
+                res = requests.get(link, timeout=2)
+                if res.status_code is 200:
+                    with open(filename, 'wb') as file_handler:
+                        file_handler.write(res.content)
+            except requests.exceptions.RequestException:
                 return
 
         threads = []
@@ -468,17 +480,16 @@ class SeoScrapy(object):
         gevent.joinall(threads)
 
         with open(os.path.join(before_filepath, 'index.html'), 'wb') as file_handler:
-            file_handler.write(content)
+            file_handler.write(self.response.content)
 
-        pre_size = self.get_size(before_filepath) / 1000
-        post_size = self.gzip_file(before_filepath, gzip_filepath) / 1000
+        pre_size = self.get_size(before_filepath) // 1000
+        post_size = self.gzip_file(before_filepath, gzip_filepath) // 1000
 
         self.del_Files(before_filepath)
         self.del_Files(gzip_filepath)
 
         try:
-            grate = str(
-                (pre_size - post_size) * 100 / pre_size) + '%'
+            grate = str((pre_size - post_size) * 100 // pre_size) + '%'
         except ZeroDivisionError:
             grate = '0%'
 
@@ -492,22 +503,18 @@ class SeoScrapy(object):
         return size
 
     def del_Files(self, dirpath):
-        for root, _, files in os.walk(dirpath):
-            for name in files:
-                try:
-                    os.remove(os.path.join(root, name))
-                except IOError:
-                    continue
-                except OSError:
-                    continue
+        print(dirpath)
+        shutil.rmtree(dirpath, True)
 
     def gzip_file(self, before_filepath, gzip_filepath):
-        if not os.path.exists(gzip_filepath):
-            os.makedirs(gzip_filepath)
+
         for _, _, files in os.walk(before_filepath):
             for file_name in files:
                 gzip_fd = gzip.open(os.path.join(gzip_filepath, file_name), 'wb')
-                gzip_fd.write(open(os.path.join(before_filepath, file_name)).read())
+                filename = os.path.join(before_filepath, file_name)
+                with open(filename, 'rb') as f:
+                    content = f.read()
+                gzip_fd.write(content)
                 gzip_fd.close()
         return self.get_size(gzip_filepath)
 
@@ -589,7 +596,15 @@ if __name__ == "__main__":
             'web_info': seo.web_info, 'get_alexa': seo.get_alexa,
             'get_include': seo.get_include, 'get_weight': seo.get_weight,
             'server_info': seo.server_info, 'top_ten': seo.top_ten}
-    seo.dead_link("www.iplaysoft.com")
+    # seo.dead_link("www.iplaysoft.com")
+    # seo.web_info("www.iplaysoft.com")
+    # seo.get_weight("www.iplaysoft.com")
+    # seo.get_alexa("www.iplaysoft.com")
+    # seo.get_include("www.iplaysoft.com")
+    # seo.server_info("www.iplaysoft.com")
+    # seo.top_ten("baidu", keyword="异次元")
+
+    seo.keyword_rank("www.jianshu.com", "baidu", "简书")
 
     # while True:
     #     if config['redis'].exists(QUEUE_NAME) is False:

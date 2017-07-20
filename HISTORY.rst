@@ -9,4 +9,8 @@ Finish Functionality of whole work
 * change deal_domain to get response. set it into self.response
 * add grequests module.
 TODO friend links include redirect links from target site.
-TODO GLOBAL config. test if it can be implemented like tornado.options
+TODO GLOBAL config. test if it can be implemented like tornado.options.
+TODO classified all the response interface into one.
+TODO two kind of settings. product env and dev env
+TODO add multiple processes
+TODO get_web_source self.url or self.domain should be careful
