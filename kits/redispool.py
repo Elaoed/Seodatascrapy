@@ -5,15 +5,14 @@ import redis
 import time
 import os
 from functools import wraps
-from log import get_logger
+from kits.log import get_logger
 
 ROOT_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 REDIS_LOGGER = get_logger('redis')
 
 
 def redis_excepts(orig_func):
-    u"""try excepts around each query
-    """
+    """try excepts around each query"""
     @wraps(orig_func)
     def wrapper(*args, **kwargs):
         try:
@@ -22,8 +21,8 @@ def redis_excepts(orig_func):
             REDIS_LOGGER.error(err)
         except redis.exceptions.TimeoutError as err:
             REDIS_LOGGER.error(err)
-        except Exception as err:
-            REDIS_LOGGER.critical(err)
+        except Exception:
+            REDIS_LOGGER.critical("Exception", exec_info=True)
     return wrapper
 
 
@@ -31,7 +30,7 @@ def get_connection():
     """Expose api to context"""
     if not Redispool.redis_pool:
         try:
-            with open(ROOT_PATH + '/config/db.conf') as config:
+            with open(ROOT_PATH + '/config/redis.conf') as config:
                 conf = json.load(config)
                 Redispool.redis_pool = redis.ConnectionPool(
                     host=conf[u'redis'][u'host'],
@@ -40,12 +39,12 @@ def get_connection():
                     password=conf[u'redis'][u'password']
                 )
         except IOError:
-            raise Exception(ROOT_PATH + '/config/db.conf does not exist')
+            raise Exception(ROOT_PATH + '/config/redis.conf does not exist')
     return redis.StrictRedis(connection_pool=Redispool.redis_pool)
 
 
 class Redispool(object):
-    u"""Full function of Redis Beckend
+    """Full function of Redis Beckend
     """
 
     redis_pool = None
@@ -60,61 +59,54 @@ class Redispool(object):
 #################################################
     @redis_excepts
     def set(self, key, value):
-        u"""Set key and value"""
+        """Set key and value"""
         REDIS_LOGGER.info("set %s %s", key, value)
         return get_connection().set(key, value)
 
     @redis_excepts
     def get(self, key):
-        u"""Get from redis using key"""
+        """Get from redis using key"""
         REDIS_LOGGER.info("get %s", key)
         return get_connection().get(key)
 
     @redis_excepts
     def setnx(self, key, value):
-        u"""set value into redis if key does not exist
+        """set value into redis if key does not exist
         """
         REDIS_LOGGER.info("setnx %s %s", key, value)
         return get_connection().setnx(key, value)
 
     @redis_excepts
     def setex(self, key, ttl, value):
-        u"""set key-value into redis with ttl
+        """set key-value into redis with ttl
         """
         REDIS_LOGGER.info("setex %s, %s, %s", key, ttl, value)
         return get_connection().setex(key, ttl, value)
 
     @redis_excepts
     def delete(self, key):
-        u"""Del key
+        """Del key
         """
         REDIS_LOGGER.info("del %s", key)
         return get_connection().delete(key)
 
     @redis_excepts
     def incr(self, key):
-        u"""increase key by one
+        """increase key by one
         """
         REDIS_LOGGER.info("incr %s", key)
         return get_connection().incr(key)
 
     @redis_excepts
-    def expire(self, key, ttl):
-        u"""indicate expire for a certain key
-        """
-        REDIS_LOGGER.info("expire %s %s", key, ttl)
-        return get_connection().expire(key, ttl)
-
-    @redis_excepts
     def exists(self, key):
-        u"""determine if given key exist
+        """determine if given key exist
         """
         REDIS_LOGGER.info("exists %s", key)
         return get_connection().exists(key)
 
     @redis_excepts
     def mset(self, **kwargs):
-        u"""multiple set keys and values
+        """multiple set keys and values
             example: r.mset(hello="h", world="w")
         """
         REDIS_LOGGER.info("mset %s", kwargs)
@@ -122,7 +114,7 @@ class Redispool(object):
 
     @redis_excepts
     def getset(self, key, value):
-        u"""get value of key and update value to prameter value
+        """get value of key and update value to prameter value
             If key has no value before. return None then
         """
         REDIS_LOGGER.info("getset %s %s", key, value)
@@ -130,7 +122,7 @@ class Redispool(object):
 
     @redis_excepts
     def mget(self, *keys):
-        u"""Get the value of all the given keys
+        """Get the value of all the given keys
         """
         if isinstance(keys[0], list):
             keys = keys[0]
@@ -140,31 +132,61 @@ class Redispool(object):
 
     @redis_excepts
     def append(self, key, value):
-        u"""Append a value to a key
+        """Append a value to a key
         """
         REDIS_LOGGER.info("append %s %s", key, value)
         return get_connection().append(key, value)
 
     @redis_excepts
-    def substr(self, key, start, stop):
-        u"""get sub string of value of key
+    def getrange(self, key, start, stop):
+        """get a substring of the string stored at a key
         """
-        REDIS_LOGGER.info("substr %s %d %d", key, start, stop)
-        return get_connection().substr(key, start, stop)
+        REDIS_LOGGER.info("getrange %s %d %d", key, start, stop)
+        return get_connection().getrange(key, start, stop)
+
+    @redis_excepts
+    def setrange(self, key, offset, value):
+        """overwrite part of a string at key starting at the specified offset
+        """
+        REDIS_LOGGER.info("setrange %s %d %d", key, offset, value)
+        return get_connection().setrange(key, offset, value)
 
     @redis_excepts
     def incrby(self, key, number):
-        u"""increase value of gievn key by number
+        """increase value of gievn key by number
         """
         REDIS_LOGGER.info("incrby %s %d", key, number)
         return get_connection().incrby(key, number)
+
+    @redis_excepts
+    def incrbyfloat(self, key, number):
+        """increase value of gievn key by number
+        """
+        REDIS_LOGGER.info("incrbyfloat %s %d", key, number)
+        return get_connection().incrbyfloat(key, number)
+
+    @redis_excepts
+    def getbit(self, key, offset):
+        pass
+
+    @redis_excepts
+    def setbit(self, key, offset):
+        pass
+
+    @redis_excepts
+    def bitcount(self, key, offset):
+        pass
+
+    @redis_excepts
+    def bitop(self, key, offset):
+        pass
 
 ############################################################
 #    Commands in list
 ############################################################
     @redis_excepts
     def push(self, value, queue=None):
-        u"""Push item into the queue
+        """Push item into the queue
         """
         if not queue:
             queue = self.queue
@@ -175,7 +197,7 @@ class Redispool(object):
 
     @redis_excepts
     def pop(self, queue=None):
-        u"""Pop from queue"""
+        """Pop from queue"""
         if not queue:
             queue = self.queue
         if not queue:
@@ -186,62 +208,117 @@ class Redispool(object):
 
     @redis_excepts
     def lrange(self, key, start, stop):
-        u"""decrease value of given key by number
+        """decrease value of given key by number
         """
         REDIS_LOGGER.info("lrange %s %d %d", key, start, stop)
         return get_connection().lrange(key, start, stop)
 
     @redis_excepts
     def lindex(self, key, pos):
-        u"""fetch individual items from the list with LINDEX.
+        """fetch individual items from the list with LINDEX.
         """
         REDIS_LOGGER.info("lindex %s %d", key, pos)
         return get_connection().lindex(key, pos)
+
+    @redis_excepts
+    def ltrim(self, key, start, end):
+        """Trim a list to the specified range
+        """
+        REDIS_LOGGER.info("ltrim %s %d %d", key, start, end)
+        return get_connection().ltrim(key, start, end)
+
+    @redis_excepts
+    def rpoplpush(self, skey, dkey):
+        """Remove the last element in a list,
+            prepend it to another list and return it
+        """
+        REDIS_LOGGER.info("rpoplpush %s %s", skey, dkey)
+        return get_connection().rpoplpush(skey, dkey)
+
+    @redis_excepts
+    def brpoplpush(self, skey, dkey, timeout):
+        """Remove the last element in a list,
+            prepend it to another list and return it
+            within a timeout
+        """
+        REDIS_LOGGER.info("rpoplpush %s %s %d", skey, dkey, timeout)
+        return get_connection().brpoplpush(skey, dkey, timeout)
+
 
 ################################
 #   Commands used on SET values
 ################################
     @redis_excepts
     def sadd(self, name, member):
-        u"""add a item into a set
+        """add a item into a set
         """
         REDIS_LOGGER.info("sadd %s %s", name, member)
         return get_connection().sadd(name, member)
 
     @redis_excepts
     def smembers(self, name):
-        u"""list members of a set
+        """list members of a set
         """
         REDIS_LOGGER.info("smembers %s", name)
         return get_connection().smembers(name)
 
     @redis_excepts
     def sismembers(self, name, member):
-        u"""determine if item in set collection
+        """determine if item in set collection
         """
         REDIS_LOGGER.info("sismembers %s, %s", name, member)
         return get_connection().sismember(name, member)
 
     @redis_excepts
     def srem(self, name, member):
-        u"""remove a item from set
+        """remove a item from set
         """
         REDIS_LOGGER.info("srem %s %s", name, member)
         return get_connection().srem(name, member)
+
+    @redis_excepts
+    def scard(self, name):
+        """Get the number of members in a set
+        """
+        REDIS_LOGGER.info("scard %s", name)
+        return get_connection().scard(name)
+
+    @redis_excepts
+    def spop(self, name):
+        """Remove and return a random members from a set
+        """
+        REDIS_LOGGER.info("spop %s", name)
+        return get_connection().spop(name)
+
+    @redis_excepts
+    def smove(self, sname, dname, member):
+        """Move  a member from one set to another
+        """
+        REDIS_LOGGER.info("smove %s %s %s", sname, dname, member)
+        return get_connection().smove(sname, dname, member)
+
+    @redis_excepts
+    def srandmember(self, key, count):
+        """Get one or multiple(count) random members from a set
+            if count > 0. No repeat member returns
+            if count < 0. May return repeat members
+        """
+        REDIS_LOGGER.info("srandmember %s %s", key, count)
+        return get_connection().srandmember(key, count)
 
 #########################################
 #   Hashes in Redis
 #########################################
     @redis_excepts
     def hset(self, name, key, value):
-        u"""Store the value at the key in the hash
+        """Store the value at the key in the hash
         """
         REDIS_LOGGER.info("hset %s %s %s", name, key, value)
         return get_connection().hset(name, key, value)
 
     @redis_excepts
     def hmset(self, name, mapping):
-        u"""multiple hset
+        """multiple hset
             example: redispool.hmset(key, {'a':1, 'b':2})
         """
         REDIS_LOGGER.info("hmset %s %s", name, str(mapping))
@@ -249,28 +326,28 @@ class Redispool(object):
 
     @redis_excepts
     def hget(self, name, key):
-        u"""Fetche the value at the given hash key
+        """Fetche the value at the given hash key
         """
         REDIS_LOGGER.info("hget %s %s", name, key)
         return get_connection().hget(name, key)
 
     @redis_excepts
     def hgetall(self, name):
-        u"""Fetche the entire hash
+        """Fetche the entire hash
         """
         REDIS_LOGGER.info("hgetall %s", name)
         return get_connection().hgetall(name)
 
     @redis_excepts
     def hdel(self, name, key):
-        u"""Remove a key from the hash, if it exists
+        """Remove a key from the hash, if it exists
         """
         REDIS_LOGGER.info("hdel %s %s", name, key)
         return get_connection().hdel(name, key)
 
     @redis_excepts
     def hincrby(self, name, key, increment):
-        u"""add increment into filed of key
+        """add increment into filed of key
         """
         REDIS_LOGGER.info("hincrby %s %s %d", name, key, increment)
         return get_connection().hincrby(name, key, increment)
@@ -281,70 +358,155 @@ class Redispool(object):
 
     @redis_excepts
     def zadd(self, key, score, member):
-        u"""Add member with the given score to the ZSET
+        """Add member with the given score to the ZSET
         """
         REDIS_LOGGER.info("zadd %s %s %s", key, score, member)
         return get_connection().zadd(key, score, member)
 
     @redis_excepts
     def zrem(self, key, member):
-        u"""Remove the item from the ZSET, if it exists
+        """Remove the item from the ZSET, if it exists
         """
         REDIS_LOGGER.info("zrem %s %s", key, member)
         return get_connection().zrem(key, member)
 
     @redis_excepts
     def zrange(self, key, start, stop, withscores=False):
-        u"""Fetche the items in the ZSET from their positions in sorted order
+        """Fetche the items in the ZSET from their positions in sorted order
         """
         REDIS_LOGGER.info("zrange %s %s %s %s", key, start, stop, withscores)
         return get_connection().zrange(key, start, stop, withscores=withscores)
 
     @redis_excepts
     def zrevrange(self, key, start, stop, withscores=False):
-        u"""reverse range function
+        """reverse range function
         """
         REDIS_LOGGER.info("zrevrange: %s %s %s %s", key, start, stop, withscores)
         return get_connection().zrevrange(key, start, stop, withscores=withscores)
 
     @redis_excepts
     def zrangebyscore(self, key, start, stop, withscores=False):
-        u"""Fetche items in the ZSET based on a range of scores. can you sort yourself?
+        """Fetche items in the ZSET based on a range of scores. can you sort yourself?
         """
         REDIS_LOGGER.info("zrangebyscore %s %s %s %s", key, start, stop, withscores)
         return get_connection().zrangebyscore(key, start, stop, withscores=withscores)
 
     @redis_excepts
     def zrevrangebyscore(self, key, start, stop, withscores=False):
-        u"""pass
+        """pass
         """
         REDIS_LOGGER.info("zrevrangebyscore: %s %s %s", key, start, stop)
         return get_connection().zrevrangebyscore(key, start, stop, withscores=withscores)
 
     @redis_excepts
     def zscore(self, key, member):
-        u"""return the ordered collection.
+        """return the ordered collection.
         """
         REDIS_LOGGER.info("zscore: %s %s", key, member)
         return get_connection().zscore(key, member)
 
     @redis_excepts
     def zincrby(self, key, member, increment):
-        u"""Increment the score of a member in a sorted set
+        """Increment the score of a member in a sorted set
         """
         REDIS_LOGGER.info("zincrby: %s %s %f", key, member, increment)
         return get_connection().zincrby(key, member, increment)
 
     # @redis_excepts
     # def zinterstore(self, dest_zsets, sets_num, *args, aggregation='max'):
-    #     u"""find those entries that are in all of the SETs and ZSETs, combining their scores
+    #     """find those entries that are in all of the SETs and ZSETs, combining their scores
     #     """
     #     REDIS_LOGGER.info("zinterstore: dest_zets:%s" % (dest_zsets))
         # return get_connection().zinterstore(dest, keys)
 
+    @redis_excepts
+    def zrank(self, key, member):
+        """return the position of the given member in the ZSET.
+            return None if not exists
+        """
+        REDIS_LOGGER.info("zrank: %s %s", key, member)
+        return get_connection().zrank(key, member)
+
+#########################################
+#   ELSE in Redis
+#########################################
+    @redis_excepts
+    def sort(self, key, alpha=False):
+        """Sort list, set by number, even use alphabet
+        """
+        REDIS_LOGGER.info("sort: %s %s", key, alpha)
+        return get_connection().sort(key, alpha)
+
+    @redis_excepts
+    def _exec(self, key, alpha=False):
+        """Sort list, set by number, even use alphabet
+        """
+        REDIS_LOGGER.info("sort: %s %s", key, alpha)
+        return get_connection().sort(key, alpha)
+
+    @redis_excepts
+    def pipline(self, key, alpha=False):
+        """Sort list, set by number, even use alphabet
+        """
+        REDIS_LOGGER.info("sort: %s %s", key, alpha)
+        return get_connection().sort(key, alpha)
+
+    @redis_excepts
+    def ttl(self, key, alpha=False):
+        """Sort list, set by number, even use alphabet
+        """
+        REDIS_LOGGER.info("sort: %s %s", key, alpha)
+        return get_connection().sort(key, alpha)
+
+    @redis_excepts
+    def pttl(self, key, alpha=False):
+        """Sort list, set by number, even use alphabet
+        """
+        REDIS_LOGGER.info("sort: %s %s", key, alpha)
+        return get_connection().sort(key, alpha)
+
+    @redis_excepts
+    def persist(self, key, alpha=False):
+        """Sort list, set by number, even use alphabet
+        """
+        REDIS_LOGGER.info("sort: %s %s", key, alpha)
+        return get_connection().sort(key, alpha)
+
+    @redis_excepts
+    def expire(self, key, ttl):
+        """indicate expire for a certain key
+        """
+        REDIS_LOGGER.info("expire %s %s", key, ttl)
+        return get_connection().expire(key, ttl)
+
+    @redis_excepts
+    def expireat(self, key, alpha=False):
+        """Sort list, set by number, even use alphabet
+        """
+        REDIS_LOGGER.info("sort: %s %s", key, alpha)
+        return get_connection().sort(key, alpha)
+
+    @redis_excepts
+    def pexpire(self, key, alpha=False):
+        """Sort list, set by number, even use alphabet
+        """
+        REDIS_LOGGER.info("sort: %s %s", key, alpha)
+        return get_connection().sort(key, alpha)
+
+    @redis_excepts
+    def pexpireat(self, key, alpha=False):
+        """Sort list, set by number, even use alphabet
+        """
+        REDIS_LOGGER.info("sort: %s %s", key, alpha)
+        return get_connection().sort(key, alpha)
+
+#########################################
+# Test start
+#########################################
+
 
 def test():
-    u"""Just test
+    """Just test
     """
     r = Redispool()
     key = 'test'
@@ -352,7 +514,7 @@ def test():
 # test key-value   ################################
 
     def test_key_value():
-        print "Test starts. key:%s ........." % key
+        print("Test starts. key:%s ........." % key)
         r.delete(key)
         assert(r.exists(key) is False)
         r.set(key, 234)
@@ -375,7 +537,7 @@ def test():
         r.delete(key)
         assert(r.getset(key, "value") is None)
         assert(r.get(key) in "value")
-        print "All key-value functions pass the test......\n"
+        print("All key-value functions pass the test......\n")
     # test_key_value()
 
 #  test List ######################################
@@ -389,7 +551,7 @@ def test():
         r2 = Redispool(queue=key)
         r2.push(value, key)
         assert(r2.pop(key) == value)
-        print "All list functions pass the test......\n"
+        print("All list functions pass the test......\n")
     test_list()
 
 #  test Set ######################################
@@ -402,7 +564,7 @@ def test():
         r.srem(key, value)
         assert(value not in r.smembers(key))
         assert(r.sismembers(key, value) is False)
-        print "All set functions pass the test......\n"
+        print("All set functions pass the test......\n")
     test_set()
 
 #  test Hash ######################################
@@ -417,15 +579,15 @@ def test():
         assert(r.hget(key, "e") == "1")
         r.hincrby(key, "e", 3)
         assert(r.hget(key, "e") == "4")
-        print r.hgetall(key)
+        print(r.hgetall(key))
         r.hdel(key, "e")
-        print r.hgetall(key)
+        print(r.hgetall(key))
         r.delete(key)
         assert(r.exists(key) is False)
         r.hmset(key, {"a": "a", "b": "b", "c": 1})
-        print r.hgetall(key)
+        print(r.hgetall(key))
         # assert(r.exists(key) is False)
-        print "All hash functions pass the test......\n"
+        print("All hash functions pass the test......\n")
     test_hash()
 
 #  test Zset ######################################
@@ -439,19 +601,19 @@ def test():
         assert("value4" in r.zrange(key, 0, -1))
         r.zrem(key, value + "4")
         assert("value4" not in r.zrange(key, 0, -1))
-        print r.zrange(key, 0, -1)
-        print r.zrange(key, 0, -1, withscores=True)
-        print r.zrevrange(key, 0, -1)
-        print r.zrevrange(key, 0, -1, withscores=True)
+        print(r.zrange(key, 0, -1))
+        print(r.zrange(key, 0, -1, withscores=True))
+        print(r.zrevrange(key, 0, -1))
+        print(r.zrevrange(key, 0, -1, withscores=True))
         assert(r.zscore(key, "value3") == 300.0)
         r.zincrby(key, "value3", 100.5)
         assert(r.zscore(key, "value3") == 400.5)
-        print r.zrangebyscore(key, 0, 200)
-        print r.zrangebyscore(key, 0, 200, withscores=True)
-        print r.zrevrangebyscore(key, 1000, 100)
-        print r.zrevrangebyscore(key, 1000, 100, withscores=True)
-        print "All zset functions pass the test..........\n"
+        print(r.zrangebyscore(key, 0, 200))
+        print(r.zrangebyscore(key, 0, 200, withscores=True))
+        print(r.zrevrangebyscore(key, 1000, 100))
+        print(r.zrevrangebyscore(key, 1000, 100, withscores=True))
+        print("All zset functions pass the test..........\n")
     test_zset()
-    print "*******Congratulations!!! All the test have been passed ~ "
+    print("*******Congratulations!!! All the test have been passed ~ ")
 
 # test()

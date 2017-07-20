@@ -1,7 +1,10 @@
+# encoding=utf-8
+
+
 class MyException(Exception):
 
     def __init__(self, msg, code=1, key=''):
-        Exception.__init__(self)
+        super(MyException, self).__init__(self)
         self.code = code
         self.msg = msg
         self.key = key
