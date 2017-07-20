@@ -1,11 +1,11 @@
 # encoding=utf8
 """Redis pool using one module in different files"""
-import json
 import redis
 import time
 import os
 from functools import wraps
 from kits.log import get_logger
+from config.conf import REDIS_CONF
 
 ROOT_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 REDIS_LOGGER = get_logger('redis')
@@ -22,24 +22,20 @@ def redis_excepts(orig_func):
         except redis.exceptions.TimeoutError as err:
             REDIS_LOGGER.error(err)
         except Exception:
-            REDIS_LOGGER.critical("Exception", exec_info=True)
+            REDIS_LOGGER.critical("Exception", exc_info=True)
+        return ""
     return wrapper
 
 
 def get_connection():
     """Expose api to context"""
     if not Redispool.redis_pool:
-        try:
-            with open(ROOT_PATH + '/config/redis.conf') as config:
-                conf = json.load(config)
-                Redispool.redis_pool = redis.ConnectionPool(
-                    host=conf[u'redis'][u'host'],
-                    port=conf[u'redis'][u'port'],
-                    db=conf[u'redis'][u'db'],
-                    password=conf[u'redis'][u'password']
-                )
-        except IOError:
-            raise Exception(ROOT_PATH + '/config/redis.conf does not exist')
+        Redispool.redis_pool = redis.ConnectionPool(
+            host=REDIS_CONF['host'],
+            port=REDIS_CONF['port'],
+            db=REDIS_CONF['db'],
+            password=REDIS_CONF['password']
+        )
     return redis.StrictRedis(connection_pool=Redispool.redis_pool)
 
 
@@ -185,7 +181,7 @@ class Redispool(object):
 #    Commands in list
 ############################################################
     @redis_excepts
-    def push(self, value, queue=None):
+    def push(self, queue=None, value=None):
         """Push item into the queue
         """
         if not queue:
@@ -545,12 +541,12 @@ def test():
     def test_list():
         r.delete(key)
         r.push(value, key)
-        assert(r.lrange(key, 0, 0)[0] == value)
-        assert(r.lindex(key, 0) == value)
-        assert(r.pop(key) == value)
+        assert(r.lrange(key, 0, 0)[0].decode('utf8') == value)
+        assert(r.lindex(key, 0).decode('utf8') == value)
+        assert(r.pop(key).decode('utf8') == value)
         r2 = Redispool(queue=key)
         r2.push(value, key)
-        assert(r2.pop(key) == value)
+        assert(r2.pop(key).decode('utf8') == value)
         print("All list functions pass the test......\n")
     test_list()
 
@@ -559,10 +555,10 @@ def test():
     def test_set():
         r.delete(key)
         r.sadd(key, value)
-        assert(value in r.smembers(key))
+        assert(value.encode('utf8') in r.smembers(key))
         assert(r.sismembers(key, value) is True)
         r.srem(key, value)
-        assert(value not in r.smembers(key))
+        assert(value.encode('utf8') not in r.smembers(key))
         assert(r.sismembers(key, value) is False)
         print("All set functions pass the test......\n")
     test_set()
@@ -574,11 +570,11 @@ def test():
         r.hset(key, "q", "q")
         r.hset(key, "w", "w")
         r.hset(key, "e", 1)
-        assert(r.hget(key, "q") == "q")
-        assert(r.hget(key, "w") == "w")
-        assert(r.hget(key, "e") == "1")
+        assert(r.hget(key, "q") == "q".encode('utf8'))
+        assert(r.hget(key, "w") == "w".encode('utf8'))
+        assert(r.hget(key, "e") == "1".encode('utf8'))
         r.hincrby(key, "e", 3)
-        assert(r.hget(key, "e") == "4")
+        assert(r.hget(key, "e") == "4".encode('utf8'))
         print(r.hgetall(key))
         r.hdel(key, "e")
         print(r.hgetall(key))
@@ -593,14 +589,14 @@ def test():
 #  test Zset ######################################
     def test_zset():
         r.delete(key)
-        r.zadd(key, value, 100)
-        r.zadd(key, value + "2", 200)
-        r.zadd(key, value + "3", 300)
-        r.zadd(key, value + "4", 150)
+        r.zadd(key, 100.0, value)
+        r.zadd(key, 200.0, value + "2")
+        r.zadd(key, 300.0, value + "3")
+        r.zadd(key, 150.0, value + "4")
         # ==============================================
-        assert("value4" in r.zrange(key, 0, -1))
+        assert("value4".encode('utf8') in r.zrange(key, 0, -1))
         r.zrem(key, value + "4")
-        assert("value4" not in r.zrange(key, 0, -1))
+        assert("value4".encode('utf8') not in r.zrange(key, 0, -1))
         print(r.zrange(key, 0, -1))
         print(r.zrange(key, 0, -1, withscores=True))
         print(r.zrevrange(key, 0, -1))

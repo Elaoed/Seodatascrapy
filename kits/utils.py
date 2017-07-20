@@ -2,6 +2,8 @@
 """utility functions"""
 import time
 import re
+from kits.grequests import get
+from kits.grequests import gmap
 
 def blfilter(domain, url):
     return (False, True)[domain in url]
@@ -15,3 +17,8 @@ def if_url(url):
     if re.match('^(http[s]?\:\/\/)?(\w+[-]?\w+\.){1,7}\w+$', url):
         return True
     return False
+
+def gget(urls, timeout=None):
+    """gevent requests get"""
+    pre_urls = (get(url) for url in urls)
+    return gmap(pre_urls, gtimeout=timeout)

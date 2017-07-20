@@ -15,10 +15,11 @@ from kits.constants import QUEUE_NAME
 from kits.redispool import Redispool
 from kits.my_exception import MyException
 
-
+__REDIS = Redispool()
+__LOGGER = get_logger('acceptRequest')
 config = {
-    'redis': Redispool(),
-    'logger': get_logger('acceptRequest')
+    'redis': __REDIS,
+    'logger': __LOGGER
 }
 
 app = Flask(__name__)
@@ -28,15 +29,15 @@ def try_except(orig_func):
     @wraps(orig_func)
     def wrapper():
         try:
-            master_token = request.values.get('master_token')
+            master_token = request.values.get('master_token', [])
             err_msg = ""
             err_code = 10009
 
             if not master_token:
                 err_msg = "Token doesn't exist"
-            if request.remote_addr not in TOKENS.keys():
+            elif request.remote_addr not in TOKENS.keys():
                 err_msg = "your Ip is not allow to acess this interface"
-            if TOKENS[request.remote_addr] not in master_token:
+            elif TOKENS[request.remote_addr] not in master_token:
                 err_msg = "the token of corresponding ip is wrong"
             if err_msg:
                 raise MyException(err_msg, err_code)
@@ -52,7 +53,7 @@ def try_except(orig_func):
         except MyException as why:
             config['logger'].info(why.msg)
             retobj = copy.deepcopy(RETOBJ)
-            retobj["status"]["msg"] = why.message
+            retobj["status"]["msg"] = why.msg
             retobj["status"]["code"] = why.code
             return json.dumps(retobj)
         except Exception:
@@ -83,12 +84,12 @@ def url_format(origin_func):
 def query_redis(redis_key):
     result = config['redis'].get(redis_key)
     if not result:
-        retobj = copy.deepcopy(RETOBJ)
+        retobj = json.dumps(copy.deepcopy(RETOBJ))
         config['redis'].set(redis_key, retobj)
         config['redis'].expire(redis_key, 60)
-        config['redis'].lpush(QUEUE_NAME, redis_key)
+        config['redis'].push(QUEUE_NAME, redis_key)
     elif json.loads(result)['status']['code'] in [10005, 10008, 10010, 10011, 10012]:
-        config['redis'].lpush(QUEUE_NAME, redis_key)
+        config['redis'].push(QUEUE_NAME, redis_key)
         retobj = result
     else:
         retobj = result
@@ -167,4 +168,4 @@ def get_top_ten():
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=3035, debug=True)
+    app.run(host='0.0.0.0', port=3035)

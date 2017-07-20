@@ -1,84 +1,42 @@
 # encoding=utf-8
 import re
-import os
 import requests
+from requests.exceptions import RequestException
 import jieba
 from lxml import etree
-import sys
 import chardet
-from utils import HEADERS
 
-reload(sys)
-sys.setdefaultencoding('utf-8')
-ROOT_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-with open(ROOT_PATH + '/filter_list', 'r') as f:
-    e_list = f.readlnes()
-EXCLUDE_LIST = [x[:-1] for x in e_list]
+from kits.constants import HEADERS
+from kits.log import ROOT_PATH
+
+with open(ROOT_PATH + '/config/filter_list', 'r') as f:
+    EXCLUDE_LIST = [x[:-1] for x in f.readlines()]
 
 
-def dealDomain(domain):
+def vice_get_response(domain):
 
-    ret_obj = {'url': domain, 'code': 10004,
-               'msg': "can't parse url:" + domain}
+    url = domain if 'http' in domain else 'http://' + domain
 
-    if 'https' in domain or 'http' in domain:
-        url = domain
-    else:
-        url = 'http://' + domain
     try:
-        res = requests.head(url, headers=HEADERS)
-        if res.status_code is 200:
-            url = res.url
-        elif res.status_code is 405:
-            res = requests.get(url, headers=HEADERS)
-            if res.status_code is 200:
-                url = res.url
-            else:
-                url = ""
-        else:
-            url = ""
-    except Exception:
-        url = ""
+        res = requests.get(url, headers=HEADERS, timeout=3)
+        if 200 <= res.status_code < 400:
+            return res
 
-    # if not re.search('^http|^https', domain if domain else ""):
-    #     try:
-    #         conn = httplib.HTTPConnection(domain, 80, timeout=4)
-    #         conn.request('GET', '/', headers=HEADERS)
-    #         res = conn.getresponse()
-    #         if res.status == 301 or res.status == 302:
-    #             ret_obj['url'] = res.msg['Location']
-    #             ret_obj['code'] = 0
-    #             ret_obj['msg'] = 'website change url to ' + res.msg['Location']
-    #         elif res.status == 200:
-    #             ret_obj['url'] = 'http://' + domain
-    #             ret_obj['code'] = 0
-    #             ret_obj['msg'] = 'return code = 200'
-    #     except socket.gaierror as e:
-    #         pass  # default
-    #     except requests.ReadTimeout as e:
-    #         ret_obj['code'] = 10005
-    #         ret_obj['msg'] = e
-    #     except socket.timeout as e:
-    #         ret_obj['code'] = 10005
-    #         ret_obj['msg'] = e
-    #     except socket.error as e:
-    #         pass  # default
-    # else:
-    #     url = domain
-    #     try:
-    #         res = requests.get(url, timeout=5)
-    #         if res and res.status_code == 200:
-    #             ret_obj['code'] = 0
-    #             ret_obj['msg'] = "url is full format"
-    #         else:
-    #             ret_obj['code'] = 10004
-    #             ret_obj['msg'] = "url:" + url + ", return code:" + res.status_code
-    #     except requests.exceptions.SSLError as e:
-    #         ret_obj['code'] = 10003
-    #         ret_obj['msg'] = e
+    except RequestException:
+        return None
 
-    return ret_obj
+    return None
 
+def get_response(domain):
+
+    response = vice_get_response(domain)
+    if response:
+        refresh_str = "<meta http-equiv=\"Refresh\" content=\"0; url=(.*?)\"/>"
+        refresh = re.match(refresh_str, response.text)
+        if refresh:
+            new_url = refresh.group(1)
+            response = vice_get_response(new_url)
+    return response
 
 def divide_article(content):
     content = re.sub(
@@ -88,8 +46,8 @@ def divide_article(content):
     li = [i.encode() for i in d]
     count = {}
     exclude_li = [' ', '\r', '\t', "'", '"', '\n', '\n\n', '\n\n\n'] + \
-                 ['%dpx' % i for i in xrange(100)] + \
-                 ['%d' % i for i in xrange(100)] + EXCLUDE_LIST
+                 ['%dpx' % i for i in range(100)] + \
+                 ['%d' % i for i in range(100)] + EXCLUDE_LIST
 
     for i in li:
         if i and len(i) > 1 and i not in exclude_li:
