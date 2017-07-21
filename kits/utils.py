@@ -18,7 +18,7 @@ def if_url(url):
         return True
     return False
 
-def gget(urls, timeout=None):
+def gget(urls, timeout=None, session=None):
     """gevent requests get"""
-    pre_urls = (get(url) for url in urls)
+    pre_urls = (get(url, session=session) for url in urls)
     return gmap(pre_urls, gtimeout=timeout)

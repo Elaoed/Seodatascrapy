@@ -2,6 +2,7 @@
 """Constants"""
 from kits.utils import get_time
 
+# BUFSIZE = 1024 * 8
 QUEUE_NAME = "request_queue"
 RETOBJ = {
     "status": {

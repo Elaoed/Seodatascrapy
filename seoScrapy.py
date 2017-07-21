@@ -1,10 +1,11 @@
 # encoding=utf-8
 """Main module of dealing with seo scrapy request"""
-import json
 import os
-import copy
 import re
+import json
+import time
 import gzip
+import copy
 import shutil
 from functools import wraps
 
@@ -21,23 +22,20 @@ from kits.utils import blfilter
 from kits.utils import gget
 from kits.redispool import Redispool
 
+from config.conf import config
+from kits.constants import RETOBJ
 from kits.constants import ENGINE
 from kits.constants import COOKIES
 from kits.constants import HEADERS
-from kits.constants import RETOBJ
 from kits.constants import QUEUE_NAME
 from kits.deal_domain import get_response
 from kits.deal_domain import divide_article
 from kits.my_exception import MyException
 
-
 monkey.patch_socket()
 
-BufSize = 1024 * 8
-config = {
-    'redis': Redispool(queue=QUEUE_NAME),
-    'logger': get_logger("seoScrapy")
-}
+config['redis'] = Redispool(queue=QUEUE_NAME)
+config['logger'] = get_logger("seoScrapy")
 
 class SeoScrapy(object):
     """SEO data Scrapy"""
@@ -82,22 +80,50 @@ class SeoScrapy(object):
         html = self.response.text
         selector = etree.HTML(html)
         urls = selector.xpath('//a/@href')
-        contents = []
         exclude_li = []
-        black_list = ['http://weibo.com', 'https://twitter.com/', 'gov.cn',
-                      'http://szcert.ebs.org.cn/', 'shang.qq.com', 'ss.knet.cn', domain]
+        black_list = ['weibo.com', 'twitter.com', 'gov.cn', 'shang.qq.com',
+                      'szcert.ebs.org.cn', 'ss.knet.cn']
         exclude_suffix = ['jpg', 'png', 'pdf', 'exe', 'rar', 'mp3']
 
-        for url in urls:
-            if url not in contents and re.match('^http[s]?', url) and \
-                    url[-3:] not in exclude_suffix and url.split('/')[2] not in exclude_li:
+        # remove links without http[s] or suffix in files suffix or in black list
+        def filter_url(url):
+            if re.match('^http[s]?', url) and url[-3:] not in exclude_suffix:
                 if not any([blfilter(_domain, url) for _domain in black_list]):
-                    contents.append(url)
-                    exclude_li.append(url.split('/')[2])
+                    return url
+        urls = [filter_url(url) for url in urls]
+        urls = [url for url in urls if url]
 
+        domain_url = []
+        not_domain_url = []
+        for url in urls:
+            if domain in url:
+                domain_url.append(url)
+            else:
+                not_domain_url.append(url)
+
+        session = requests.Session()
+        reses = [res for res in gget(domain_url, session=session) if res]
         frilink = dict()
-        for link in contents:
-            frilink[link] = -1
+        for res in reses:
+            frilink_domain = res.url.split('/')[2]
+            if domain not in res.url and frilink_domain not in exclude_li:
+                if res.status_code is 200:
+                    frilink[res.url] = 1
+                else:
+                    frilink[res.url] = 0
+                exclude_li.append(frilink_domain)
+
+        for url in not_domain_url:
+            frilink_domain = url.split('/')[2]
+            if frilink_domain not in exclude_li:
+                frilink[url] = -1
+                exclude_li.append(frilink_domain)
+
+        retobj = copy.deepcopy(RETOBJ)
+        retobj['status']['msg'] = "part of dead link"
+        retobj['status']['code'] = 10020
+        retobj['info'] = frilink
+        config['redis'].set('dead_link:::' + domain, json.dumps(retobj))
 
         return frilink
 
@@ -107,28 +133,21 @@ class SeoScrapy(object):
         if not self.response:
             raise MyException("Has no Response object returned", 10030)
 
-        link_status = self.friend_link(domain)
-
-        retobj = copy.deepcopy(RETOBJ)
-        retobj['status']['msg'] = "part of dead link"
-        retobj['status']['code'] = 10020
-        retobj['info'] = link_status
-
-        config['redis'].set('dead_link:::' + domain, json.dumps(retobj))
-
-        urls = list(link_status.keys())
+        frilink = self.friend_link(domain)
+        urls = [url for url in frilink if frilink[url] is -1]
         res = gget(urls, timeout=3)
         for index, url in enumerate(res):
             if not url:
-                link_status[urls[index]] = 1
+                frilink[urls[index]] = 1
             elif 200 <= url.status_code < 400:
-                link_status[urls[index]] = 0
+                frilink[urls[index]] = 0
             else:
-                link_status[urls[index]] = 1
+                frilink[urls[index]] = 1
 
+        retobj = copy.deepcopy(RETOBJ)
         retobj['status']['msg'] = domain + " get DeadLink good"
         retobj['status']['code'] = 1000
-        retobj['info'] = link_status
+        retobj['info'] = frilink
         config['logger'].debug(retobj)
         return retobj
 
@@ -244,12 +263,8 @@ class SeoScrapy(object):
                 res = requests.get(url, timeout=4, headers=HEADERS, cookies=COOKIES)
                 nurl = res.url
             else:
-                nurl = re.search("URL='(.*?)'",
-                                 requests.get(url,
-                                              timeout=2,
-                                              headers=HEADERS,
-                                              cookies=COOKIES)
-                                 .content)
+                res = requests.get(url, timeout=2, headers=HEADERS, cookies=COOKIES)
+                nurl = re.search("URL='(.*?)'", res.text)
                 nurl = nurl.group(1) if nurl else None
             return nurl
         except requests.ReadTimeout:
@@ -364,7 +379,10 @@ class SeoScrapy(object):
             urls = check_sogou_360_rank(divs)
 
         count = None
+        # print(urls)
+        start = int(time.time())
         reses = gget(urls, timeout=3)
+        print(int(time.time()) - start)
         urls = {}
         for index, res in enumerate(reses, 1):
             if res:
@@ -382,7 +400,6 @@ class SeoScrapy(object):
                               ENGINE[search_engine]['base_url'] + keyword,
                               search_engine)
 
-        print(RETOBJ)
         retobj = copy.deepcopy(RETOBJ)
         retobj['status']['msg'] = domain + ' keyword get good'
         retobj['info'] = {'count': count}
@@ -464,20 +481,12 @@ class SeoScrapy(object):
         if not os.path.exists(gzip_filepath):
             os.makedirs(gzip_filepath)
 
-        def downSourceFile(link, index, before_filepath):
-            filename = os.path.join(before_filepath, str(index))
-            try:
-                res = requests.get(link, timeout=2)
-                if res.status_code is 200:
-                    with open(filename, 'wb') as file_handler:
-                        file_handler.write(res.content)
-            except requests.exceptions.RequestException:
-                return
-
-        threads = []
-        for index, url in enumerate(useful_links):
-            threads.append(gevent.spawn(downSourceFile, url, index, before_filepath))
-        gevent.joinall(threads)
+        reses = gget(useful_links, timeout=3)
+        for index, res in enumerate(reses):
+            if res and res.status_code is 200:
+                filename = os.path.join(before_filepath, str(index))
+                with open(filename, 'wb') as file_handler:
+                    file_handler.write(res.content)
 
         with open(os.path.join(before_filepath, 'index.html'), 'wb') as file_handler:
             file_handler.write(self.response.content)
@@ -503,7 +512,6 @@ class SeoScrapy(object):
         return size
 
     def del_Files(self, dirpath):
-        print(dirpath)
         shutil.rmtree(dirpath, True)
 
     def gzip_file(self, before_filepath, gzip_filepath):
@@ -596,6 +604,8 @@ if __name__ == "__main__":
             'web_info': seo.web_info, 'get_alexa': seo.get_alexa,
             'get_include': seo.get_include, 'get_weight': seo.get_weight,
             'server_info': seo.server_info, 'top_ten': seo.top_ten}
+
+    # single test
     # seo.dead_link("www.iplaysoft.com")
     # seo.web_info("www.iplaysoft.com")
     # seo.get_weight("www.iplaysoft.com")
@@ -603,15 +613,14 @@ if __name__ == "__main__":
     # seo.get_include("www.iplaysoft.com")
     # seo.server_info("www.iplaysoft.com")
     # seo.top_ten("baidu", keyword="异次元")
+    # seo.keyword_rank("www.jianshu.com", "baidu", "简书")
 
-    seo.keyword_rank("www.jianshu.com", "baidu", "简书")
-
-    # while True:
-    #     if config['redis'].exists(QUEUE_NAME) is False:
-    #         time.sleep(3)
-    #         continue
-    #     request_li = config['redis'].lrange(QUEUE_NAME, 0, -1)
-    #     task_li = []
-    #     for request in request_li:
-    #         task_li.append(gevent.spawn(run_forever, request))
-    #     gevent.joinall(task_li)
+    while True:
+        if config['redis'].exists(QUEUE_NAME) is False:
+            time.sleep(3)
+            continue
+        request_li = config['redis'].lrange(QUEUE_NAME, 0, -1)
+        task_li = []
+        for request in request_li:
+            task_li.append(gevent.spawn(run_forever, request))
+        gevent.joinall(task_li)
