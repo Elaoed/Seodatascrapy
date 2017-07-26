@@ -75,12 +75,20 @@ class SeoScrapy(object):
         retobj['info'] = web_info
         return retobj
 
-    def friend_link(self, domain):
-        """Get friend links of given website"""
+    def get_all_links(self, domain):
+        self.response = get_response(domain)
+        if not self.response:
+            raise MyException("Has no Response object returned", 10030)
+
         html = self.response.text
         selector = etree.HTML(html)
         urls = selector.xpath('//a/@href')
-        exclude_li = []
+        return urls
+
+    def friend_link(self, domain):
+        """Get friend links of given website"""
+
+        urls = self.get_all_links(domain)
         black_list = ['weibo.com', 'twitter.com', 'gov.cn', 'shang.qq.com',
                       'szcert.ebs.org.cn', 'ss.knet.cn']
         exclude_suffix = ['jpg', 'png', 'pdf', 'exe', 'rar', 'mp3']
@@ -102,22 +110,11 @@ class SeoScrapy(object):
                 not_domain_url.append(url)
 
         session = requests.Session()
-        reses = [res for res in gget(domain_url, session=session) if res]
-        frilink = dict()
-        for res in reses:
-            frilink_domain = res.url.split('/')[2]
-            if domain not in res.url and frilink_domain not in exclude_li:
-                if res.status_code is 200:
-                    frilink[res.url] = 1
-                else:
-                    frilink[res.url] = 0
-                exclude_li.append(frilink_domain)
-
-        for url in not_domain_url:
-            frilink_domain = url.split('/')[2]
-            if frilink_domain not in exclude_li:
-                frilink[url] = -1
-                exclude_li.append(frilink_domain)
+        urls = [res.url for res in gget(domain_url, session=session) if res]
+        frilink = []
+        for url in urls + not_domain_url:
+            if url not in frilink and domain not in url:
+                frilink.append(url)
 
         retobj = copy.deepcopy(RETOBJ)
         retobj['status']['msg'] = "part of dead link"
@@ -129,13 +126,10 @@ class SeoScrapy(object):
 
     def dead_link(self, domain):
 
-        self.response = get_response(domain)
-        if not self.response:
-            raise MyException("Has no Response object returned", 10030)
-
-        frilink = self.friend_link(domain)
-        urls = [url for url in frilink if frilink[url] is -1]
+        urls = self.get_all_links(domain)
+        frilink = dict()
         res = gget(urls, timeout=3)
+
         for index, url in enumerate(res):
             if not url:
                 frilink[urls[index]] = 1
@@ -580,9 +574,11 @@ def run_forever(req):
                      --> get_weight(domain)     weight:::domain     -> json
 
         2.dead_link(url)                        dead_link:::domain  -> json
+        2.friend_link(url)                      friend_link:::domain  -> json
 
         3.keyword_rank(url, keyword)            domain:::keyword_rank:::search_engine:::keyword
                                                 search_engine:::keyword -> json
+        4.whois core data
 
     """
     config['logger'].info("Deal " + req)
@@ -614,6 +610,7 @@ if __name__ == "__main__":
     # seo.server_info("www.iplaysoft.com")
     # seo.top_ten("baidu", keyword="异次元")
     # seo.keyword_rank("www.jianshu.com", "baidu", "简书")
+    # seo.friend_link("www.iplaysoft.com")
 
     while True:
         if config['redis'].exists(QUEUE_NAME) is False:

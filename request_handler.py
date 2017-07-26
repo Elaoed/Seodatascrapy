@@ -5,7 +5,9 @@ import json
 from functools import wraps
 
 import requests
-from flask import Flask, request
+from flask import Flask
+from flask import request
+from flask import render_template
 
 from kits.log import get_logger
 from config.conf import TOKENS
@@ -123,6 +125,12 @@ def keyword_rank():
 def dead_link(redis_key):
     return query_redis(redis_key)
 
+@app.route('/getFriendLink', methods=['POST'])
+@try_except
+@url_format
+def friend_link(redis_key):
+    return query_redis(redis_key)
+
 @app.route('/getWebInfo', methods=['POST'])
 @try_except
 @url_format
@@ -165,6 +173,10 @@ def get_top_ten():
         return query_redis(redis_key)
     else:
         raise MyException("top_ten - param not right", 10002)
+
+@app.route('/', methods=['GET'])
+def index():
+    return render_template('index.html')
 
 
 if __name__ == "__main__":
