@@ -278,7 +278,6 @@ class SeoScrapy(object):
         desc = div.xpath(ENGINE[search_engine]['desc_xpath'])
         desc = desc[0].xpath('string(.)') if desc else ""
 
-        # config['logger'].debug('%d finish append', index)
         return {'title': title, 'desc': desc, 'url': url, 'count': 0}
 
     def top_ten(self, search_engine, keyword):
@@ -301,104 +300,104 @@ class SeoScrapy(object):
         config['logger'].debug(retobj)
         return retobj
 
-    def get_rank(self, domain, base_url, search_engine):
-        config['logger'].info('Using search engine:' + search_engine)
-        try:
-            res = requests.get(base_url,
-                               headers=HEADERS,
-                               cookies=COOKIES,
-                               timeout=5).text
+    # def get_rank(self, domain, base_url, search_engine):
+    #     config['logger'].info('Using search engine:' + search_engine)
+    #     try:
+    #         res = requests.get(base_url,
+    #                            headers=HEADERS,
+    #                            cookies=COOKIES,
+    #                            timeout=5).text
 
-        except requests.exceptions.ConnectionError:
-            config['logger'].warning(base_url + " Connection error")
-            raise MyException(base_url + " can not be parsed", 10004)
+    #     except requests.exceptions.ConnectionError:
+    #         config['logger'].warning(base_url + " Connection error")
+    #         raise MyException(base_url + " can not be parsed", 10004)
 
-        selector = etree.HTML(res)
-        if search_engine == 'sogou':
-            try:
-                total = selector.xpath(ENGINE[search_engine]['rstring'])[0]
-            except IndexError:
-                config['logger'].error('IndexError scrapy Sogou too fast')
-                raise MyException('IndexError scrapy Sogou too fast', 10005)
-        else:
-            total = re.search(ENGINE[search_engine]['rstring'], res).group(1)
+    #     selector = etree.HTML(res)
+    #     if search_engine == 'sogou':
+    #         try:
+    #             total = selector.xpath(ENGINE[search_engine]['rstring'])[0]
+    #         except IndexError:
+    #             config['logger'].error('IndexError scrapy Sogou too fast')
+    #             raise MyException('IndexError scrapy Sogou too fast', 10005)
+    #     else:
+    #         total = re.search(ENGINE[search_engine]['rstring'], res).group(1)
 
-        total = int(total.replace(',', ''))
-        total = 5 if total > 50 else (
-            (total // 10 + 1) if total % 10 > 0 else total // 10)
+    #     total = int(total.replace(',', ''))
+    #     total = 5 if total > 50 else (
+    #         (total // 10 + 1) if total % 10 > 0 else total // 10)
 
-        count = 0
-        divs = []
-        urls = []
-        for i in range(1, total):
-            if search_engine == 'baidu':
-                nurl = base_url + '&pn=' + str(i * 10)
-            elif search_engine == '360':
-                nurl = base_url + "&pn=" + str(i + 1)
-            else:
-                nurl = base_url + "&page=" + str(i + 1)
-            urls.append(nurl)
+    #     count = 0
+    #     divs = []
+    #     urls = []
+    #     for i in range(1, total):
+    #         if search_engine == 'baidu':
+    #             nurl = base_url + '&pn=' + str(i * 10)
+    #         elif search_engine == '360':
+    #             nurl = base_url + "&pn=" + str(i + 1)
+    #         else:
+    #             nurl = base_url + "&page=" + str(i + 1)
+    #         urls.append(nurl)
 
-        reses = gget(urls, timeout=3)
-        for res in reses:
-            selector = etree.HTML(res.text)
-            divs += selector.xpath(ENGINE[search_engine]['content_xpath'])
+    #     reses = gget(urls, timeout=3)
+    #     for res in reses:
+    #         selector = etree.HTML(res.text)
+    #         divs += selector.xpath(ENGINE[search_engine]['content_xpath'])
 
-        def check_baidu_rank(divs):
+    #     def check_baidu_rank(divs):
 
-            urls = []
-            for div in divs:
-                url = div.xpath(ENGINE[search_engine]['url_xpath'])
-                urls += url
-            return urls
+    #         urls = []
+    #         for div in divs:
+    #             url = div.xpath(ENGINE[search_engine]['url_xpath'])
+    #             urls += url
+    #         return urls
 
-        def check_sogou_360_rank(divs):
+    #     def check_sogou_360_rank(divs):
 
-            urls = []
-            for div in divs:
-                url = div.xpath(ENGINE[search_engine]['url_xpath'])
-                urls.append(url)
+    #         urls = []
+    #         for div in divs:
+    #             url = div.xpath(ENGINE[search_engine]['url_xpath'])
+    #             urls.append(url)
 
-            reses = gget(urls, timeout=3)
+    #         reses = gget(urls, timeout=3)
 
-            urls = []
-            for res in reses:
-                urls.append(re.search("URL='(.*?)'", res.text))
-            return urls
+    #         urls = []
+    #         for res in reses:
+    #             urls.append(re.search("URL='(.*?)'", res.text))
+    #         return urls
 
-        if search_engine == 'baidu':
-            urls = check_baidu_rank(divs)
-            print("urls from check rank")
-        elif search_engine in ['360', 'sogou']:
-            urls = check_sogou_360_rank(divs)
+    #     if search_engine == 'baidu':
+    #         urls = check_baidu_rank(divs)
+    #         print("urls from check rank")
+    #     elif search_engine in ['360', 'sogou']:
+    #         urls = check_sogou_360_rank(divs)
 
-        count = None
-        # print(urls)
-        start = int(time.time())
-        reses = gget(urls, timeout=3)
-        print(int(time.time()) - start)
-        urls = {}
-        for index, res in enumerate(reses, 1):
-            if res:
-                if domain in res.url:
-                    count = str(index)
-                    break
-        else:
-            count = '50+'
+    #     count = None
+    #     # print(urls)
+    #     start = int(time.time())
+    #     reses = gget(urls, timeout=3)
+    #     print(int(time.time()) - start)
+    #     urls = {}
+    #     for index, res in enumerate(reses, 1):
+    #         if res:
+    #             if domain in res.url:
+    #                 count = str(index)
+    #                 break
+    #     else:
+    #         count = '50+'
 
-        return count
+    #     return count
 
-    def keyword_rank(self, domain, search_engine, keyword):
+    # def keyword_rank(self, domain, search_engine, keyword):
 
-        count = self.get_rank(domain,
-                              ENGINE[search_engine]['base_url'] + keyword,
-                              search_engine)
+    #     count = self.get_rank(domain,
+    #                           ENGINE[search_engine]['base_url'] + keyword,
+    #                           search_engine)
 
-        retobj = copy.deepcopy(RETOBJ)
-        retobj['status']['msg'] = domain + ' keyword get good'
-        retobj['info'] = {'count': count}
-        config['logger'].debug(retobj)
-        return retobj
+    #     retobj = copy.deepcopy(RETOBJ)
+    #     retobj['status']['msg'] = domain + ' keyword get good'
+    #     retobj['info'] = {'count': count}
+    #     config['logger'].debug(retobj)
+    #     return retobj
 
     def server_info(self, domain):
 
@@ -576,8 +575,8 @@ def run_forever(req):
         2.dead_link(url)                        dead_link:::domain  -> json
         2.friend_link(url)                      friend_link:::domain  -> json
 
-        3.keyword_rank(url, keyword)            domain:::keyword_rank:::search_engine:::keyword
-                                                search_engine:::keyword -> json
+        3.keyword_rank(url, keyword)(canceled)  domain:::keyword_rank:::search_engine:::keyword
+                                                search_engine:::keyword -> json.
         4.whois core data
 
     """

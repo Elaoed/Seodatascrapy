@@ -10,6 +10,7 @@ Finish Functionality of whole work
 * add grequests module.
 TODO two kind of settings. product env and dev env
 TODO add multiple processes
+TODO assgin code to errors
 
 ### 2017-7-20
 * make sure GLOBAL config from other file can be changed
@@ -20,3 +21,4 @@ TODO add multiple processes
 * almost fix all the problems.
 * divide friend link and dead link. use different stategy
 TODO whois core data
+
