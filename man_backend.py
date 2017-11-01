@@ -1,5 +1,10 @@
-# encoding=utf-8
+# -*- coding: utf-8 -*-
 """Main module of dealing with seo scrapy request"""
+
+import gevent
+from gevent import monkey
+monkey.patch_socket()
+
 import os
 import re
 import json
@@ -10,8 +15,6 @@ import shutil
 from functools import wraps
 
 import requests
-import gevent
-from gevent import monkey
 from bs4 import BeautifulSoup
 from lxml import etree
 import xml.etree.cElementTree as ET
@@ -31,8 +34,6 @@ from kits.constants import QUEUE_NAME
 from kits.deal_domain import get_response
 from kits.deal_domain import divide_article
 from kits.my_exception import MyException
-
-monkey.patch_socket()
 
 config['redis'] = Redispool(queue=QUEUE_NAME)
 config['logger'] = get_logger("seoScrapy")
