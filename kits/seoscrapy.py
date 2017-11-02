@@ -529,7 +529,21 @@ def try_except(orig_func):
 
         try:
             retobj = orig_func(req)
-        except requests.ReadTimeout:
+
+        except MyException as err_msg:
+            config['logger'].error(err_msg.msg)
+            retobj = copy.deepcopy(RETOBJ)
+            retobj['status']['msg'] = err_msg.msg
+            retobj['status']['code'] = err_msg.code
+
+        except requests.exceptions.ConnectTimeout:
+            err_msg = "Connect Time out"
+            config['logger'].error(err_msg)
+            retobj = copy.deepcopy(RETOBJ)
+            retobj['status']['msg'] = err_msg
+            retobj['status']['code'] = 10005
+
+        except requests.exceptions.ReadTimeout:
             err_msg = "Read Time out"
             config['logger'].error(err_msg)
             retobj = copy.deepcopy(RETOBJ)
@@ -542,12 +556,6 @@ def try_except(orig_func):
             retobj = copy.deepcopy(RETOBJ)
             retobj['status']['msg'] = err_msg
             retobj['status']['code'] = 10005
-
-        except MyException as err_msg:
-            config['logger'].error(err_msg.msg)
-            retobj = copy.deepcopy(RETOBJ)
-            retobj['status']['msg'] = err_msg.msg
-            retobj['status']['code'] = err_msg.code
 
         except Exception:
             config['logger'].critical("Exceptions", exc_info=True)
@@ -573,8 +581,8 @@ def run_forever(req):
                      --> get_web_info(url)      web_info:::domain   -> json
                      --> get_weight(domain)     weight:::domain     -> json
 
-        2.dead_link(url)                        dead_link:::domain  -> json
-        2.friend_link(url)                      friend_link:::domain  -> json
+        2.dead_link(url)                        dead_link:::domain   -> json
+        2.friend_link(url)                      friend_link:::domain -> json
 
         3.keyword_rank(url, keyword)(canceled)  domain:::keyword_rank:::search_engine:::keyword
                                                 search_engine:::keyword -> json.
@@ -594,12 +602,14 @@ def run_forever(req):
         FUNC[param_string[0]](param_string[1])
 
 
-if __name__ == "__main__":
+def backend_loop():
     seo = SeoScrapy()
-    FUNC = {'keyword_rank': seo.keyword_rank, 'dead_link': seo.dead_link,
+    global FUNC
+    FUNC = {'dead_link': seo.dead_link, 'server_info': seo.server_info,
             'web_info': seo.web_info, 'get_alexa': seo.get_alexa,
             'get_include': seo.get_include, 'get_weight': seo.get_weight,
-            'server_info': seo.server_info, 'top_ten': seo.top_ten}
+            # 'keyword_rank': seo.keyword_rank, 'top_ten': seo.top_ten
+            }
 
     # single test
     # seo.dead_link("www.iplaysoft.com")
